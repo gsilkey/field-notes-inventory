@@ -373,10 +373,12 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v22";
+var APP_VERSION = "v24";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v24 2026-07-09  Re-identify button on failed inventory entries — re-supply photos, patches entry in place
+v23 2026-07-09  Reduce API image 1568px→1024px to cut payload and iOS fetch timeout risk
 v22 2026-07-09  Capture tab: batch queue — add notebooks 2-at-a-time, process all in sequence
 v21 2026-07-09  Fix false save banner: only setSaveError on thrown exceptions, not unreadable no-cors return value
 v20 2026-07-09  Fix Sheets writes: switch postToSheet to no-cors fire-and-forget (Apps Script redirect was blocking response, causing false save failures)
@@ -544,7 +546,7 @@ function prepareImage(file) {
   return Promise.all([
     resizeImageFile(file, 160, 0.5),
     resizeImageFile(file, 640, 0.7),
-    resizeImageFile(file, 1568, 0.85),
+    resizeImageFile(file, 1024, 0.82),
     resizeImageFile(file, 1600, 0.92)
   ]).then(([thumb, display, apiDataUrl, fullResDataUrl]) => ({
     thumb,
@@ -871,6 +873,7 @@ function App() {
   const [captureError, setCaptureError] = useState(null);
   const [captureQueue, setCaptureQueue] = useState([]);
   const [processingIndex, setProcessingIndex] = useState(null);
+  const [reIdentifyLoading, setReIdentifyLoading] = useState(null);
   const identifyElapsed = useElapsedSeconds(identifying);
   const pricingElapsed = useElapsedSeconds(pricingLoading !== null);
   const [saveCount, setSaveCount] = useState(0);
@@ -1166,6 +1169,57 @@ function App() {
     }
     setCaptureQueue([]);
     setProcessingIndex(null);
+  }
+  async function handleReIdentify(e, itemId) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    e.target.value = "";
+    let prepared;
+    try {
+      prepared = (await Promise.all(files.map(prepareImage))).slice(0, 2);
+    } catch (err) {
+      return;
+    }
+    setReIdentifyLoading(itemId);
+    let ai = null;
+    let errorDetail = null;
+    try {
+      ai = await identifyNotebook(prepared.map((p) => p.apiImage));
+    } catch (err) {
+      errorDetail = err?.message || String(err);
+    }
+    const matchedEdition = ai && ai.proposedEditionName ? editions.find((e) => e.name.toLowerCase() === ai.proposedEditionName.toLowerCase()) : null;
+    persistInventory((prev) => prev.map((it) => {
+      if (it.id !== itemId) return it;
+      return {
+        ...it,
+        photo: prepared[0].thumb,
+        editionId: matchedEdition ? matchedEdition.id : it.editionId,
+        aiProposedName: ai?.proposedEditionName || null,
+        aiConfidence: ai?.editionConfidence || null,
+        aiConditionNotes: ai?.conditionNotes || (errorDetail ? `AI error: ${errorDetail}` : ""),
+        aiConditionConfidence: ai?.conditionConfidence || null,
+        aiError: !ai,
+        aiEditionCode: ai?.editionCode || null,
+        aiSeasonYear: ai?.seasonYear || null,
+        aiEditionNotes: ai?.editionNotes || "",
+        aiMetadataConfidence: ai?.metadataConfidence || null,
+        aiMetadataSource: ai?.metadataSource || null,
+        coverCondition: coerce(ai?.coverCondition, COVER, COVER[0]),
+        cornerWear: coerce(ai?.cornerWear, CORNER, CORNER[0]),
+        spineStaples: coerce(ai?.spineStaples, SPINE, SPINE[0]),
+        pageCondition: coerce(ai?.pageCondition, PAGE, PAGE[0]),
+        completeness: coerce(ai?.completeness, COMPLETE, COMPLETE[0]),
+        bellyBand: coerce(ai?.bellyBand, BELLY, BELLY[2]),
+        notes: ai?.transcribedText ? `AI-read text: ${ai.transcribedText}` : it.notes,
+        verified: false
+      };
+    }));
+    const slug = slugify(matchedEdition ? matchedEdition.name : ai?.proposedEditionName);
+    downloadFullResPhotos(itemId, slug, prepared.map((p) => p.fullRes)).then((filenames) => {
+      persistInventory((prev) => prev.map((it) => it.id === itemId ? { ...it, photoFiles: filenames } : it));
+    });
+    setReIdentifyLoading(null);
   }
   function startEdit(item) {
     setEntry(item);
@@ -1908,6 +1962,12 @@ function App() {
                   /* @__PURE__ */ jsx(Pencil, { size: 12 }),
                   " ",
                   item.verified ? "Edit" : "Review"
+                ] }),
+                item.aiError && /* @__PURE__ */ jsxs("label", { className: `fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1 ${reIdentifyLoading === item.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`, children: [
+                  /* @__PURE__ */ jsx(RefreshCw, { size: 12 }),
+                  " ",
+                  reIdentifyLoading === item.id ? "Identifying\u2026" : "Re-identify",
+                  /* @__PURE__ */ jsx("input", { type: "file", accept: "image/*", multiple: true, className: "hidden", disabled: reIdentifyLoading !== null, onChange: (e) => handleReIdentify(e, item.id) })
                 ] }),
                 item.photoFiles?.length > 0 && /* @__PURE__ */ jsxs("button", { onClick: () => copyFilenames(item), className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1", children: [
                   /* @__PURE__ */ jsx(Copy, { size: 12 }),
