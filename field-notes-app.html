@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Field Notes Tracker</title>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client"
+  }
+}
+</script>
+<style>
+  html, body { margin:0; padding:0; height:100%; background:#EFE8D6; }
+  #root { min-height:100vh; }
+  .block { display:block; }
+  .hidden { display:none; }
+  .flex { display:flex; }
+  .inline-flex { display:inline-flex; }
+  .grid { display:grid; }
+  .flex-1 { flex:1 1 0%; }
+  .flex-col { flex-direction:column; }
+  .flex-wrap { flex-wrap:wrap; }
+  .grid-cols-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .col-span-2 { grid-column:span 2 / span 2; }
+  .items-center { align-items:center; }
+  .items-start { align-items:flex-start; }
+  .items-end { align-items:flex-end; }
+  .justify-between { justify-content:space-between; }
+  .justify-center { justify-content:center; }
+  .justify-end { justify-content:flex-end; }
+  .self-start { align-self:flex-start; }
+  .relative { position:relative; }
+  .absolute { position:absolute; }
+  .fixed { position:fixed; }
+  .sticky { position:sticky; }
+  .overflow-hidden { overflow:hidden; }
+  .overflow-x-auto { overflow-x:auto; }
+  .cursor-pointer { cursor:pointer; }
+  .shrink-0 { flex-shrink:0; }
+  .min-w-0 { min-width:0px; }
+  .truncate { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .underline { text-decoration-line:underline; }
+  .italic { font-style:italic; }
+  .uppercase { text-transform:uppercase; }
+  .tracking-tight { letter-spacing:-0.025em; }
+  .tracking-wide { letter-spacing:0.025em; }
+  .leading-none { line-height:1; }
+  .resize-none { resize:none; }
+  .object-contain { object-fit:contain; }
+  .object-cover { object-fit:cover; }
+  .min-h-screen { min-height:100vh; }
+  .max-h-full { max-height:100%; }
+  .max-w-full { max-width:100%; }
+  .max-w-md { max-width:28rem; }
+  .w-full { width:100%; }
+  .mx-auto { margin-left:auto;margin-right:auto; }
+  .text-center { text-align:center; }
+  .text-left { text-align:left; }
+  .text-right { text-align:right; }
+  .font-bold { font-weight:700; }
+  .font-semibold { font-weight:600; }
+  .font-medium { font-weight:500; }
+  .font-mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .border { border-width:1px;border-style:solid;border-color:#e7e5e4; }
+  .border-t { border-top-width:1px;border-top-style:solid;border-top-color:#e7e5e4; }
+  .border-b { border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#e7e5e4; }
+  .rounded { border-radius:0.25rem; }
+  .rounded-full { border-radius:9999px; }
+  .inset-0 { top:0;right:0;bottom:0;left:0; }
+  .top-0 { top:0; }
+  .top-4 { top:1rem; }
+  .left-2 { left:0.5rem; }
+  .right-4 { right:1rem; }
+  .top-1/2 { top:50%; }
+  .-translate-y-1/2 { transform:translateY(-50%); }
+  .-top-1.5 { top:-0.375rem; }
+  .-right-1.5 { right:-0.375rem; }
+  .z-10 { z-index:10; }
+  .z-50 { z-index:50; }
+  .space-y-2 > * + * { margin-top:0.5rem; }
+  .h-14 { height:3.5rem; }
+  .h-16 { height:4rem; }
+  .h-20 { height:5rem; }
+  .w-14 { width:3.5rem; }
+  .w-16 { width:4rem; }
+  .w-20 { width:5rem; }
+  .p-0.5 { padding:0.125rem; }
+  .p-1 { padding:0.25rem; }
+  .p-1.5 { padding:0.375rem; }
+  .p-2 { padding:0.5rem; }
+  .p-2.5 { padding:0.625rem; }
+  .p-3 { padding:0.75rem; }
+  .p-4 { padding:1rem; }
+  .p-6 { padding:1.5rem; }
+  .p-10 { padding:2.5rem; }
+  .p-14 { padding:3.5rem; }
+  .p-16 { padding:4rem; }
+  .p-20 { padding:5rem; }
+  .p-7 { padding:1.75rem; }
+  .px-0.5 { padding-left:0.125rem;padding-right:0.125rem; }
+  .px-1 { padding-left:0.25rem;padding-right:0.25rem; }
+  .px-1.5 { padding-left:0.375rem;padding-right:0.375rem; }
+  .px-2 { padding-left:0.5rem;padding-right:0.5rem; }
+  .px-2.5 { padding-left:0.625rem;padding-right:0.625rem; }
+  .px-3 { padding-left:0.75rem;padding-right:0.75rem; }
+  .px-4 { padding-left:1rem;padding-right:1rem; }
+  .px-6 { padding-left:1.5rem;padding-right:1.5rem; }
+  .px-10 { padding-left:2.5rem;padding-right:2.5rem; }
+  .px-14 { padding-left:3.5rem;padding-right:3.5rem; }
+  .px-16 { padding-left:4rem;padding-right:4rem; }
+  .px-20 { padding-left:5rem;padding-right:5rem; }
+  .px-7 { padding-left:1.75rem;padding-right:1.75rem; }
+  .py-0.5 { padding-top:0.125rem;padding-bottom:0.125rem; }
+  .py-1 { padding-top:0.25rem;padding-bottom:0.25rem; }
+  .py-1.5 { padding-top:0.375rem;padding-bottom:0.375rem; }
+  .py-2 { padding-top:0.5rem;padding-bottom:0.5rem; }
+  .py-2.5 { padding-top:0.625rem;padding-bottom:0.625rem; }
+  .py-3 { padding-top:0.75rem;padding-bottom:0.75rem; }
+  .py-4 { padding-top:1rem;padding-bottom:1rem; }
+  .py-6 { padding-top:1.5rem;padding-bottom:1.5rem; }
+  .py-10 { padding-top:2.5rem;padding-bottom:2.5rem; }
+  .py-14 { padding-top:3.5rem;padding-bottom:3.5rem; }
+  .py-16 { padding-top:4rem;padding-bottom:4rem; }
+  .py-20 { padding-top:5rem;padding-bottom:5rem; }
+  .py-7 { padding-top:1.75rem;padding-bottom:1.75rem; }
+  .pl-0.5 { padding-left:0.125rem; }
+  .pl-1 { padding-left:0.25rem; }
+  .pl-1.5 { padding-left:0.375rem; }
+  .pl-2 { padding-left:0.5rem; }
+  .pl-2.5 { padding-left:0.625rem; }
+  .pl-3 { padding-left:0.75rem; }
+  .pl-4 { padding-left:1rem; }
+  .pl-6 { padding-left:1.5rem; }
+  .pl-10 { padding-left:2.5rem; }
+  .pl-14 { padding-left:3.5rem; }
+  .pl-16 { padding-left:4rem; }
+  .pl-20 { padding-left:5rem; }
+  .pl-7 { padding-left:1.75rem; }
+  .pr-0.5 { padding-right:0.125rem; }
+  .pr-1 { padding-right:0.25rem; }
+  .pr-1.5 { padding-right:0.375rem; }
+  .pr-2 { padding-right:0.5rem; }
+  .pr-2.5 { padding-right:0.625rem; }
+  .pr-3 { padding-right:0.75rem; }
+  .pr-4 { padding-right:1rem; }
+  .pr-6 { padding-right:1.5rem; }
+  .pr-10 { padding-right:2.5rem; }
+  .pr-14 { padding-right:3.5rem; }
+  .pr-16 { padding-right:4rem; }
+  .pr-20 { padding-right:5rem; }
+  .pr-7 { padding-right:1.75rem; }
+  .pt-0.5 { padding-top:0.125rem; }
+  .pt-1 { padding-top:0.25rem; }
+  .pt-1.5 { padding-top:0.375rem; }
+  .pt-2 { padding-top:0.5rem; }
+  .pt-2.5 { padding-top:0.625rem; }
+  .pt-3 { padding-top:0.75rem; }
+  .pt-4 { padding-top:1rem; }
+  .pt-6 { padding-top:1.5rem; }
+  .pt-10 { padding-top:2.5rem; }
+  .pt-14 { padding-top:3.5rem; }
+  .pt-16 { padding-top:4rem; }
+  .pt-20 { padding-top:5rem; }
+  .pt-7 { padding-top:1.75rem; }
+  .pb-0.5 { padding-bottom:0.125rem; }
+  .pb-1 { padding-bottom:0.25rem; }
+  .pb-1.5 { padding-bottom:0.375rem; }
+  .pb-2 { padding-bottom:0.5rem; }
+  .pb-2.5 { padding-bottom:0.625rem; }
+  .pb-3 { padding-bottom:0.75rem; }
+  .pb-4 { padding-bottom:1rem; }
+  .pb-6 { padding-bottom:1.5rem; }
+  .pb-10 { padding-bottom:2.5rem; }
+  .pb-14 { padding-bottom:3.5rem; }
+  .pb-16 { padding-bottom:4rem; }
+  .pb-20 { padding-bottom:5rem; }
+  .pb-7 { padding-bottom:1.75rem; }
+  .mt-0.5 { margin-top:0.125rem; }
+  .mt-1 { margin-top:0.25rem; }
+  .mt-1.5 { margin-top:0.375rem; }
+  .mt-2 { margin-top:0.5rem; }
+  .mt-2.5 { margin-top:0.625rem; }
+  .mt-3 { margin-top:0.75rem; }
+  .mt-4 { margin-top:1rem; }
+  .mt-6 { margin-top:1.5rem; }
+  .mt-10 { margin-top:2.5rem; }
+  .mt-14 { margin-top:3.5rem; }
+  .mt-16 { margin-top:4rem; }
+  .mt-20 { margin-top:5rem; }
+  .mt-7 { margin-top:1.75rem; }
+  .gap-0.5 { gap:0.125rem; }
+  .gap-1 { gap:0.25rem; }
+  .gap-1.5 { gap:0.375rem; }
+  .gap-2 { gap:0.5rem; }
+  .gap-2.5 { gap:0.625rem; }
+  .gap-3 { gap:0.75rem; }
+  .gap-4 { gap:1rem; }
+  .gap-6 { gap:1.5rem; }
+  .gap-10 { gap:2.5rem; }
+  .gap-14 { gap:3.5rem; }
+  .gap-16 { gap:4rem; }
+  .gap-20 { gap:5rem; }
+  .gap-7 { gap:1.75rem; }
+  .bg-stone-50 { background-color:#fafaf9; }
+  .text-stone-50 { color:#fafaf9; }
+  .border-stone-50 { border-color:#fafaf9; }
+  .bg-stone-100 { background-color:#f5f5f4; }
+  .text-stone-100 { color:#f5f5f4; }
+  .border-stone-100 { border-color:#f5f5f4; }
+  .bg-stone-200 { background-color:#e7e5e4; }
+  .text-stone-200 { color:#e7e5e4; }
+  .border-stone-200 { border-color:#e7e5e4; }
+  .bg-stone-300 { background-color:#d6d3d1; }
+  .text-stone-300 { color:#d6d3d1; }
+  .border-stone-300 { border-color:#d6d3d1; }
+  .bg-stone-400 { background-color:#a8a29e; }
+  .text-stone-400 { color:#a8a29e; }
+  .border-stone-400 { border-color:#a8a29e; }
+  .bg-stone-500 { background-color:#78716c; }
+  .text-stone-500 { color:#78716c; }
+  .border-stone-500 { border-color:#78716c; }
+  .bg-stone-600 { background-color:#57534e; }
+  .text-stone-600 { color:#57534e; }
+  .border-stone-600 { border-color:#57534e; }
+  .bg-stone-700 { background-color:#44403c; }
+  .text-stone-700 { color:#44403c; }
+  .border-stone-700 { border-color:#44403c; }
+  .bg-stone-800 { background-color:#292524; }
+  .text-stone-800 { color:#292524; }
+  .border-stone-800 { border-color:#292524; }
+  .bg-amber-50 { background-color:#fffbeb; }
+  .text-amber-50 { color:#fffbeb; }
+  .border-amber-50 { border-color:#fffbeb; }
+  .bg-amber-200 { background-color:#fde68a; }
+  .text-amber-200 { color:#fde68a; }
+  .border-amber-200 { border-color:#fde68a; }
+  .bg-emerald-50 { background-color:#ecfdf5; }
+  .text-emerald-50 { color:#ecfdf5; }
+  .border-emerald-50 { border-color:#ecfdf5; }
+  .bg-emerald-200 { background-color:#a7f3d0; }
+  .text-emerald-200 { color:#a7f3d0; }
+  .border-emerald-200 { border-color:#a7f3d0; }
+  .bg-emerald-700 { background-color:#047857; }
+  .text-emerald-700 { color:#047857; }
+  .border-emerald-700 { border-color:#047857; }
+  .bg-purple-50 { background-color:#faf5ff; }
+  .text-purple-50 { color:#faf5ff; }
+  .border-purple-50 { border-color:#faf5ff; }
+  .bg-purple-200 { background-color:#e9d5ff; }
+  .text-purple-200 { color:#e9d5ff; }
+  .border-purple-200 { border-color:#e9d5ff; }
+  .bg-purple-700 { background-color:#7e22ce; }
+  .text-purple-700 { color:#7e22ce; }
+  .border-purple-700 { border-color:#7e22ce; }
+  .bg-red-50 { background-color:#fef2f2; }
+  .text-red-50 { color:#fef2f2; }
+  .border-red-50 { border-color:#fef2f2; }
+  .bg-red-200 { background-color:#fecaca; }
+  .text-red-200 { color:#fecaca; }
+  .border-red-200 { border-color:#fecaca; }
+  .bg-red-600 { background-color:#dc2626; }
+  .text-red-600 { color:#dc2626; }
+  .border-red-600 { border-color:#dc2626; }
+  .bg-red-700 { background-color:#b91c1c; }
+  .text-red-700 { color:#b91c1c; }
+  .border-red-700 { border-color:#b91c1c; }
+  .bg-white { background-color:#ffffff; }
+  .text-white { color:#ffffff; }
+  .border-white { border-color:#ffffff; }
+  .text-xs { font-size:0.75rem;line-height:1rem; }
+  .text-sm { font-size:0.875rem;line-height:1.25rem; }
+  .text-lg { font-size:1.125rem;line-height:1.75rem; }
+  .opacity-70 { opacity:0.70; }
+  .opacity-80 { opacity:0.80; }
+  .disabled\:opacity-40:disabled { opacity:0.4; }
+  .disabled\:opacity-50:disabled { opacity:0.5; }
+  
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+// field-notes-app-source.jsx
+import { useState, useEffect, useCallback } from "react";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+function Icon({ size = 16, className = "", children }) {
+  return /* @__PURE__ */ jsx(
+    "svg",
+    {
+      width: size,
+      height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: "2",
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+      className,
+      children
+    }
+  );
+}
+var Camera = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("path", { d: "M3 7h4l2-3h6l2 3h4v13H3z" }),
+  /* @__PURE__ */ jsx("circle", { cx: "12", cy: "13", r: "4" })
+] });
+var Plus = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+  /* @__PURE__ */ jsx("line", { x1: "5", y1: "12", x2: "19", y2: "12" })
+] });
+var Trash2 = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("polyline", { points: "3 6 5 6 21 6" }),
+  /* @__PURE__ */ jsx("path", { d: "M19 6l-1 14H6L5 6" }),
+  /* @__PURE__ */ jsx("path", { d: "M10 11v6" }),
+  /* @__PURE__ */ jsx("path", { d: "M14 11v6" }),
+  /* @__PURE__ */ jsx("path", { d: "M9 6V4h6v2" })
+] });
+var Download = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("path", { d: "M12 3v12" }),
+  /* @__PURE__ */ jsx("polyline", { points: "7 10 12 15 17 10" }),
+  /* @__PURE__ */ jsx("line", { x1: "4", y1: "20", x2: "20", y2: "20" })
+] });
+var Pencil = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("path", { d: "M4 20l4-1 11-11-3-3L5 16l-1 4z" }),
+  /* @__PURE__ */ jsx("line", { x1: "14", y1: "6", x2: "17", y2: "9" })
+] });
+var Search = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("circle", { cx: "11", cy: "11", r: "7" }),
+  /* @__PURE__ */ jsx("line", { x1: "21", y1: "21", x2: "16.5", y2: "16.5" })
+] });
+var X = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("line", { x1: "5", y1: "5", x2: "19", y2: "19" }),
+  /* @__PURE__ */ jsx("line", { x1: "19", y1: "5", x2: "5", y2: "19" })
+] });
+var Check = (p) => /* @__PURE__ */ jsx(Icon, { ...p, children: /* @__PURE__ */ jsx("polyline", { points: "20 6 9 17 4 12" }) });
+var ChevronDown = (p) => /* @__PURE__ */ jsx(Icon, { ...p, children: /* @__PURE__ */ jsx("polyline", { points: "6 9 12 15 18 9" }) });
+var ChevronUp = (p) => /* @__PURE__ */ jsx(Icon, { ...p, children: /* @__PURE__ */ jsx("polyline", { points: "18 15 12 9 6 15" }) });
+var ExternalLink = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("path", { d: "M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" }),
+  /* @__PURE__ */ jsx("polyline", { points: "15 3 21 3 21 9" }),
+  /* @__PURE__ */ jsx("line", { x1: "10", y1: "14", x2: "21", y2: "3" })
+] });
+var RefreshCw = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("polyline", { points: "23 4 23 10 17 10" }),
+  /* @__PURE__ */ jsx("polyline", { points: "1 20 1 14 7 14" }),
+  /* @__PURE__ */ jsx("path", { d: "M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" })
+] });
+var Copy = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("rect", { x: "9", y: "9", width: "12", height: "12", rx: "2" }),
+  /* @__PURE__ */ jsx("path", { d: "M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" })
+] });
+var Upload = (p) => /* @__PURE__ */ jsxs(Icon, { ...p, children: [
+  /* @__PURE__ */ jsx("path", { d: "M12 21V9" }),
+  /* @__PURE__ */ jsx("polyline", { points: "7 14 12 9 17 14" }),
+  /* @__PURE__ */ jsx("line", { x1: "4", y1: "20", x2: "20", y2: "20" })
+] });
+var COVER = ["Mint", "Near Mint", "Light Wear", "Heavy Wear"];
+var CORNER = ["None", "Light", "Moderate", "Heavy"];
+var SPINE = ["Tight / Clean", "Light Rust", "Loose / Damaged"];
+var PAGE = ["Blank / Unused", "Lightly Used", "Heavily Used"];
+var COMPLETE = ["Sealed", "Open \u2013 Complete", "Incomplete"];
+var BELLY = ["Present", "Missing", "N/A"];
+var STATUS = ["In Stock", "Listed", "Sold"];
+var TABS = [
+  { key: "capture", label: "Capture" },
+  { key: "intake", label: "Intake" },
+  { key: "inventory", label: "Inventory" },
+  { key: "editions", label: "Editions" }
+];
+var APP_VERSION = "v18";
+var BUILD_DATE = "2026-07-09";
+/*
+CHANGELOG
+v18 2026-07-09  web_search 20250305→20260209; max_uses split (identify:2 / pricing:5); pricing lookup opt-in only
+v17 (prior session) Google Sheets backend; JSONP reads; static stylesheet replacing Tailwind CDN; API key via localStorage
+v16 (prior session) baseline at GitHub Pages deploy
+*/
+var EMPTY_ENTRY = {
+  id: null,
+  editionId: "",
+  photo: null,
+  quantity: 1,
+  coverCondition: COVER[0],
+  cornerWear: CORNER[0],
+  spineStaples: SPINE[0],
+  pageCondition: PAGE[0],
+  completeness: COMPLETE[0],
+  bellyBand: BELLY[2],
+  status: STATUS[0],
+  dateAcquired: "",
+  cost: "",
+  salePrice: "",
+  soldPlatform: "",
+  notes: "",
+  verified: true,
+  aiProposedName: null,
+  aiConfidence: null,
+  aiConditionNotes: "",
+  aiConditionConfidence: null,
+  aiError: false,
+  aiEditionCode: null,
+  aiSeasonYear: null,
+  aiEditionNotes: "",
+  aiMetadataConfidence: null,
+  aiMetadataSource: null,
+  priceObservations: [],
+  photoFiles: []
+};
+var EMPTY_EDITION = { id: null, name: "", seasonYear: "", editionNumber: "", notes: "", source: "" };
+function priceStats(observations) {
+  const prices = (observations || []).map((o) => o.price).filter((p) => typeof p === "number" && !isNaN(p));
+  if (!prices.length) return null;
+  return {
+    max: Math.max(...prices),
+    min: Math.min(...prices),
+    avg: prices.reduce((a, b) => a + b, 0) / prices.length,
+    count: prices.length
+  };
+}
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+function csvEscape(val) {
+  const s = (val ?? "").toString();
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function toCSV(inventory, editions) {
+  const map = Object.fromEntries(editions.map((e) => [e.id, e]));
+  const headers = [
+    "Item ID",
+    "Edition",
+    "Season/Year",
+    "Edition #",
+    "Quantity",
+    "Cover",
+    "Corners",
+    "Spine/Staples",
+    "Pages",
+    "Completeness",
+    "Belly Band",
+    "Status",
+    "Verified",
+    "Date Acquired",
+    "Cost",
+    "Sale Price",
+    "Sold Platform",
+    "Photo Files",
+    "Notes"
+  ];
+  const rows = inventory.map((item) => {
+    const ed = map[item.editionId];
+    return [
+      item.id,
+      ed ? ed.name : item.aiProposedName || "Unidentified",
+      ed ? ed.seasonYear : "",
+      ed ? ed.editionNumber : "",
+      item.quantity,
+      item.coverCondition,
+      item.cornerWear,
+      item.spineStaples,
+      item.pageCondition,
+      item.completeness,
+      item.bellyBand,
+      item.status,
+      item.verified ? "Yes" : "No",
+      item.dateAcquired,
+      item.cost,
+      item.salePrice,
+      item.soldPlatform,
+      (item.photoFiles || []).join("; "),
+      item.notes
+    ].map(csvEscape).join(",");
+  });
+  return [headers.join(","), ...rows].join("\n");
+}
+function downloadCSV(csv) {
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `field-notes-inventory-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function buildBackup(editions, inventory, saveCount) {
+  return { exportedAt: (/* @__PURE__ */ new Date()).toISOString(), editions, inventory, saveCount };
+}
+function downloadJSON(payload, filenamePrefix) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filenamePrefix}-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function resizeImageFile(file, maxDim = 160, quality = 0.5) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width >= height && width > maxDim) {
+          height = Math.round(height * (maxDim / width));
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round(width * (maxDim / height));
+          height = maxDim;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function coerce(val, options, fallback) {
+  return options.includes(val) ? val : fallback;
+}
+function prepareImage(file) {
+  return Promise.all([
+    resizeImageFile(file, 160, 0.5),
+    resizeImageFile(file, 640, 0.7),
+    resizeImageFile(file, 1568, 0.85),
+    resizeImageFile(file, 1600, 0.92)
+  ]).then(([thumb, display, apiDataUrl, fullResDataUrl]) => ({
+    thumb,
+    display,
+    fullRes: fullResDataUrl,
+    apiImage: { mediaType: "image/jpeg", data: apiDataUrl.split(",")[1] }
+  }));
+}
+function slugify(s) {
+  const base = (s || "unidentified").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return base.slice(0, 40) || "unidentified";
+}
+function dataUrlToBlob(dataUrl) {
+  const [header, base64] = dataUrl.split(",");
+  const mimeMatch = header.match(/data:(.*?);base64/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+function downloadDataUrl(dataUrl, filename) {
+  const blob = dataUrlToBlob(dataUrl);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+async function downloadFullResPhotos(itemId, slug, fullResList) {
+  const filenames = [];
+  for (let i = 0; i < fullResList.length; i++) {
+    const filename = `fn-${slug}-${itemId}-${i + 1}.jpg`;
+    downloadDataUrl(fullResList[i], filename);
+    filenames.push(filename);
+    if (i < fullResList.length - 1) await new Promise((r) => setTimeout(r, 350));
+  }
+  return filenames;
+}
+var IDENTIFY_PROMPT = `You are looking at one or more photos of the same Field Notes brand pocket notebook (a collectible American stationery memo book). Examine the cover, spine, belly band, and any colophon or back-page text that is visible.
+
+You have web search available. Use it only to confirm release season/year and any item code once you already have a proposedEditionName from directly legible printed text \u2014 check official sources like fieldnotesbrand.com first. Never use web search to guess an edition name from color or material alone, and never rely on your own memory for season/year \u2014 confirm it via search or leave it null. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 your visible output must go straight to the JSON object with no lead-in text of any kind.
+
+Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown code fences, no preamble, no explanation outside the JSON. Use exactly these keys:
+{
+  "transcribedText": string (any printed text you can read that is relevant to identifying the edition, or empty string),
+  "proposedEditionName": string or null (only set this if an edition name is clearly legible as printed text on the cover, belly band, or colophon \u2014 never infer a name from color or material alone),
+  "editionConfidence": "high" or "low" or null,
+  "editionCode": string or null (an item/SKU code if printed, e.g. "FNC-55"),
+  "seasonYear": string or null (e.g. "Summer 2022" \u2014 only if confirmed via web search against an official or reliable source; leave null if not confirmed, do not guess from memory),
+  "editionNotes": string (identifying physical details actually visible in the photos: cover material, color, ruling, foil, belly band, special features),
+  "metadataConfidence": "high" or "low" or null (confidence in editionCode/seasonYear specifically),
+  "metadataSource": string or null (URL or source name used to confirm seasonYear/editionCode, if web search was used),
+  "coverCondition": one of "Mint", "Near Mint", "Light Wear", "Heavy Wear",
+  "cornerWear": one of "None", "Light", "Moderate", "Heavy",
+  "spineStaples": one of "Tight / Clean", "Light Rust", "Loose / Damaged",
+  "pageCondition": one of "Blank / Unused", "Lightly Used", "Heavily Used",
+  "completeness": one of "Sealed", "Open \u2013 Complete", "Incomplete",
+  "bellyBand": one of "Present", "Missing", "N/A",
+  "conditionNotes": string (brief, specific description of visible wear, damage, or anything notable),
+  "conditionConfidence": "high" or "low"
+}
+
+If you cannot read a clear printed edition name, set proposedEditionName to null and editionConfidence to null rather than guessing. Base condition fields on what is actually visible; set conditionConfidence to "low" if photo angle, lighting, or resolution limits what you can assess.`;
+function getApiKey() {
+  return localStorage.getItem("fn_api_key") || "";
+}
+function setApiKey(key) {
+  localStorage.setItem("fn_api_key", key);
+}
+async function callClaudeJSON(content, maxTokens, maxSearchUses = 4) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("No Anthropic API key set \u2014 add one in Settings first.");
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: maxSearchUses }]
+    })
+  });
+  if (!response.ok) {
+    let detail = "";
+    try {
+      const errBody = await response.json();
+      detail = errBody?.error?.message || JSON.stringify(errBody).slice(0, 200);
+    } catch (e) {
+      detail = await response.text().catch(() => "");
+    }
+    throw new Error(`API error ${response.status}${detail ? ": " + detail : ""}`);
+  }
+  const data = await response.json();
+  const textBlocks = (data.content || []).filter((b) => b.type === "text");
+  const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : "";
+  const cleaned = text.replace(/```json|```/g, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error("Model didn't return valid JSON: " + (cleaned.slice(0, 200) || "(empty response)"));
+  }
+}
+async function identifyNotebook(images) {
+  const content = [
+    ...images.map((img) => ({
+      type: "image",
+      source: { type: "base64", media_type: img.mediaType, data: img.data }
+    })),
+    { type: "text", text: IDENTIFY_PROMPT }
+  ];
+  return callClaudeJSON(content, 4096, 2);
+}
+function describeCondition(item) {
+  const parts = [item.completeness, `${item.coverCondition} cover`, `${item.cornerWear} corner wear`];
+  if (item.bellyBand && item.bellyBand !== "N/A") parts.push(`belly band ${item.bellyBand.toLowerCase()}`);
+  return parts.filter(Boolean).join(", ");
+}
+function buildPricePrompt(name, seasonYear, code, conditionSummary) {
+  return `Research the current and recent secondhand resale value of the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
+
+The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Condition materially changes value \u2014 when you search, prefer comparables that roughly match this condition, and in each observation's "note" field say whether that comp's condition looks similar, better, or worse than this copy.
+
+Use web search. You have at most 5 searches available, so prioritize: check eBay first (active listings and any sold/completed listings with a final price), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
+
+For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
+{
+  "observations": [
+    {
+      "price": number,
+      "type": "sold" or "asking" or "mentioned",
+      "source": string (site or community name, e.g. "eBay", "Reddit r/fieldnotes", "Etsy"),
+      "sourceUrl": string or null,
+      "date": string or null (date of the sale or post if known, otherwise null),
+      "note": string (brief context, including how this comp's condition compares to the copy described above)
+    }
+  ],
+  "searchSummary": string (1-2 sentences: what you found, and which sources you actually checked)
+}
+Only include observations backed by a real source you can point to. If you find nothing concrete, return an empty observations array and say why in searchSummary rather than inventing a number. If a specific listing's price isn't clearly stated in what you found, drop that one listing and move on to the next \u2014 do not explain the difficulty in your response, just exclude it and finish with whatever you could confirm.`;
+}
+async function lookupPricing(name, seasonYear, code, conditionSummary) {
+  return callClaudeJSON(buildPricePrompt(name, seasonYear, code, conditionSummary), 4096, 5);
+}
+var SHEETS_URL = "https://script.google.com/macros/s/AKfycbzSFiv90xUYkMfITgL_tGbeeBxptpTahQ0ovEsVUFTU26PjvM2EY55pqKeqF04dhi-H2w/exec";
+async function fetchTab(tab) {
+  try {
+    const res = await fetch(`${SHEETS_URL}?tab=${tab}`);
+    if (!res.ok) return tab === "meta" ? {} : [];
+    const data = await res.json();
+    return tab === "meta" ? data || {} : Array.isArray(data) ? data : [];
+  } catch (e) {
+    return tab === "meta" ? {} : [];
+  }
+}
+async function postToSheet(body) {
+  try {
+    const res = await fetch(SHEETS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data.ok;
+  } catch (e) {
+    return false;
+  }
+}
+function upsertRow(tab, row) {
+  return postToSheet({ tab, row });
+}
+function deleteRow(tab, id) {
+  return postToSheet({ tab, action: "delete", id });
+}
+function setMetaValue(key, value) {
+  return postToSheet({ tab: "meta", key, value });
+}
+function diffAndSync(tab, prevArr, nextArr) {
+  const prevById = new Map(prevArr.map((it) => [it.id, it]));
+  const nextIds = /* @__PURE__ */ new Set();
+  const calls = [];
+  for (const item of nextArr) {
+    nextIds.add(item.id);
+    const before = prevById.get(item.id);
+    if (!before || JSON.stringify(before) !== JSON.stringify(item)) {
+      calls.push(upsertRow(tab, item));
+    }
+  }
+  for (const item of prevArr) {
+    if (!nextIds.has(item.id)) calls.push(deleteRow(tab, item.id));
+  }
+  return Promise.all(calls).then((results) => results.every(Boolean));
+}
+function Field({ label, htmlFor, children }) {
+  return /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1", children: [
+    /* @__PURE__ */ jsx("label", { htmlFor, className: "text-xs uppercase tracking-wide text-stone-500", children: label }),
+    children
+  ] });
+}
+function Select({ id, value, onChange, options }) {
+  return /* @__PURE__ */ jsx("select", { id, value, onChange, className: "fn-input rounded px-2 py-1.5 text-sm w-full", children: options.map((o) => /* @__PURE__ */ jsx("option", { value: o, children: o }, o)) });
+}
+function EditionForm({ value, onChange, onSubmit, onCancel, submitLabel }) {
+  return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
+    /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+      /* @__PURE__ */ jsx(Field, { label: "Edition name", htmlFor: "ed-name", children: /* @__PURE__ */ jsx(
+        "input",
+        {
+          id: "ed-name",
+          className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+          value: value.name,
+          onChange: (e) => onChange({ ...value, name: e.target.value }),
+          placeholder: "e.g. Heartland"
+        }
+      ) }),
+      /* @__PURE__ */ jsx(Field, { label: "Season / year", htmlFor: "ed-season", children: /* @__PURE__ */ jsx(
+        "input",
+        {
+          id: "ed-season",
+          className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+          value: value.seasonYear,
+          onChange: (e) => onChange({ ...value, seasonYear: e.target.value }),
+          placeholder: "Winter 2023"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+      /* @__PURE__ */ jsx(Field, { label: "Edition # (optional)", htmlFor: "ed-num", children: /* @__PURE__ */ jsx(
+        "input",
+        {
+          id: "ed-num",
+          className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+          value: value.editionNumber,
+          onChange: (e) => onChange({ ...value, editionNumber: e.target.value }),
+          placeholder: "61st"
+        }
+      ) }),
+      /* @__PURE__ */ jsx(Field, { label: "Source", htmlFor: "ed-source", children: /* @__PURE__ */ jsx(
+        "input",
+        {
+          id: "ed-source",
+          className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+          value: value.source,
+          onChange: (e) => onChange({ ...value, source: e.target.value }),
+          placeholder: "fieldnotesbrand.com"
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ jsx(Field, { label: "Identifying notes", htmlFor: "ed-notes", children: /* @__PURE__ */ jsx(
+      "textarea",
+      {
+        id: "ed-notes",
+        rows: 2,
+        className: "fn-input rounded px-2 py-1.5 text-sm w-full resize-none",
+        value: value.notes,
+        onChange: (e) => onChange({ ...value, notes: e.target.value }),
+        placeholder: "Cover stock, color, ruling, foil, belly band material..."
+      }
+    ) }),
+    /* @__PURE__ */ jsxs("div", { className: "flex gap-2 justify-end", children: [
+      onCancel && /* @__PURE__ */ jsx("button", { onClick: onCancel, className: "fn-btn-ghost rounded px-3 py-1.5 text-sm", children: "Cancel" }),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: onSubmit,
+          disabled: !value.name.trim(),
+          className: "fn-btn-primary rounded px-3 py-1.5 text-sm font-medium disabled:opacity-40",
+          children: submitLabel
+        }
+      )
+    ] })
+  ] });
+}
+function useElapsedSeconds(active) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      setSeconds(0);
+      return;
+    }
+    const start = Date.now();
+    setSeconds(0);
+    const id = setInterval(() => setSeconds(Math.floor((Date.now() - start) / 1e3)), 1e3);
+    return () => clearInterval(id);
+  }, [active]);
+  return seconds;
+}
+function App() {
+  const [loaded, setLoaded] = useState(false);
+  const [editions, setEditions] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [tab, setTab] = useState("intake");
+  const [saveError, setSaveError] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
+  const [showSettings, setShowSettings] = useState(!getApiKey());
+  const [entry, setEntry] = useState(EMPTY_ENTRY);
+  const [entryPhotos, setEntryPhotos] = useState([]);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickEdition, setQuickEdition] = useState(EMPTY_EDITION);
+  const [editionDraft, setEditionDraft] = useState(EMPTY_EDITION);
+  const [editionSearch, setEditionSearch] = useState("");
+  const [expandedEditionId, setExpandedEditionId] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(null);
+  const [pricingError, setPricingError] = useState(null);
+  const [pendingResults, setPendingResults] = useState({});
+  const [priceDraft, setPriceDraft] = useState({ price: "", type: "asking", source: "", sourceUrl: "", date: "", note: "" });
+  const [invSearch, setInvSearch] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [reviewOnly, setReviewOnly] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [pendingPhotos, setPendingPhotos] = useState([]);
+  const [identifying, setIdentifying] = useState(false);
+  const [captureError, setCaptureError] = useState(null);
+  const identifyElapsed = useElapsedSeconds(identifying);
+  const pricingElapsed = useElapsedSeconds(pricingLoading !== null);
+  const [saveCount, setSaveCount] = useState(0);
+  const [autoBackupNotice, setAutoBackupNotice] = useState(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoreError, setRestoreError] = useState(null);
+  const [pendingRestore, setPendingRestore] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreNotice, setRestoreNotice] = useState(null);
+  const AUTO_BACKUP_EVERY = 25;
+  useEffect(() => {
+    (async () => {
+      const [ed, inv, meta] = await Promise.all([
+        fetchTab("editions"),
+        fetchTab("inventory"),
+        fetchTab("meta")
+      ]);
+      setEditions(ed);
+      setInventory(inv);
+      const count = Number(meta?.saveCount);
+      setSaveCount(Number.isFinite(count) ? count : 0);
+      setLoaded(true);
+    })();
+  }, []);
+  const persistEditions = useCallback((updater) => {
+    setEditions((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      diffAndSync("editions", prev, next).then((ok) => setSaveError(!ok));
+      return next;
+    });
+  }, []);
+  const persistInventory = useCallback((updater) => {
+    setInventory((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      diffAndSync("inventory", prev, next).then((ok) => setSaveError(!ok));
+      return next;
+    });
+  }, []);
+  function recordSave(latestInventory, latestEditions) {
+    const next = saveCount + 1;
+    setSaveCount(next);
+    setMetaValue("saveCount", next);
+    if (next % AUTO_BACKUP_EVERY === 0) {
+      downloadJSON(buildBackup(latestEditions, latestInventory, next), "field-notes-backup");
+      setAutoBackupNotice(next);
+      setTimeout(() => setAutoBackupNotice((n) => n === next ? null : n), 4e3);
+    }
+  }
+  async function runManualBackup() {
+    setBackingUp(true);
+    try {
+      downloadJSON(buildBackup(editions, inventory, saveCount), "field-notes-backup");
+    } finally {
+      setBackingUp(false);
+    }
+  }
+  async function handleRestoreFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setRestoreError(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed.editions) || !Array.isArray(parsed.inventory)) {
+        throw new Error("missing editions/inventory arrays");
+      }
+      setPendingRestore(parsed);
+    } catch (err) {
+      setRestoreError("That file doesn't look like a Field Notes backup \u2014 check you picked the right .json file.");
+    }
+  }
+  async function confirmRestore() {
+    if (!pendingRestore) return;
+    setRestoring(true);
+    const { editions: edIn, inventory: invIn, saveCount: countIn } = pendingRestore;
+    persistEditions(edIn);
+    persistInventory(invIn);
+    const restoredCount = typeof countIn === "number" ? countIn : invIn.length;
+    setSaveCount(restoredCount);
+    setMetaValue("saveCount", restoredCount);
+    setRestoring(false);
+    setPendingRestore(null);
+    setRestoreNotice({ items: invIn.length, editions: edIn.length });
+    setTimeout(() => setRestoreNotice(null), 5e3);
+  }
+  function cancelRestore() {
+    setPendingRestore(null);
+  }
+  function addEdition(draft, onDone) {
+    const newEd = { ...draft, id: uid(), dateAdded: (/* @__PURE__ */ new Date()).toISOString() };
+    persistEditions((prev) => [...prev, newEd]);
+    if (onDone) onDone(newEd);
+  }
+  function deleteEdition(id) {
+    persistEditions((prev) => prev.filter((e) => e.id !== id));
+    setConfirmDeleteId(null);
+  }
+  async function runPriceLookup(item, opts = {}) {
+    const ed = editionById[item.editionId];
+    const name = ed?.name || item.aiProposedName;
+    const seasonYear = ed?.seasonYear || item.aiSeasonYear;
+    const code = ed?.editionNumber || item.aiEditionCode;
+    if (!name) {
+      if (!opts.silent) setPricingError("No edition linked yet \u2014 select or confirm an edition above first.");
+      return;
+    }
+    setPricingLoading(item.id);
+    setPricingError(null);
+    try {
+      const result = await lookupPricing(name, seasonYear, code, describeCondition(item));
+      const found = (result?.observations || []).map((o) => ({
+        id: uid(),
+        price: typeof o.price === "number" ? o.price : parseFloat(o.price),
+        type: ["sold", "asking", "mentioned"].includes(o.type) ? o.type : "mentioned",
+        source: o.source || "unknown",
+        sourceUrl: o.sourceUrl || null,
+        date: o.date || null,
+        note: o.note || "",
+        addedBy: "ai",
+        dateAdded: (/* @__PURE__ */ new Date()).toISOString()
+      })).filter((o) => !isNaN(o.price));
+      if (found.length) {
+        setPendingResults((prev) => ({ ...prev, [item.id]: found }));
+      } else {
+        setPricingError(result?.searchSummary || "No concrete price data found for this item.");
+      }
+    } catch (err) {
+      setPricingError(err?.message || String(err));
+    }
+    setPricingLoading(null);
+  }
+  function addPriceObservation(itemId) {
+    const price = parseFloat(priceDraft.price);
+    if (isNaN(price)) return;
+    const obs = { ...priceDraft, id: uid(), price, addedBy: "manual", dateAdded: (/* @__PURE__ */ new Date()).toISOString() };
+    persistInventory((prev) => prev.map(
+      (it) => it.id === itemId ? { ...it, priceObservations: [...it.priceObservations || [], obs] } : it
+    ));
+    setPriceDraft({ price: "", type: "asking", source: "", sourceUrl: "", date: "", note: "" });
+  }
+  function deletePriceObservation(itemId, obsId) {
+    persistInventory((prev) => prev.map(
+      (it) => it.id === itemId ? { ...it, priceObservations: (it.priceObservations || []).filter((o) => o.id !== obsId) } : it
+    ));
+  }
+  function commitPendingResults(itemId) {
+    const found = pendingResults[itemId];
+    if (!found || !found.length) return;
+    persistInventory((prev) => prev.map(
+      (it) => it.id === itemId ? { ...it, priceObservations: [...it.priceObservations || [], ...found] } : it
+    ));
+    setPendingResults((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+  function discardPendingResults(itemId) {
+    setPendingResults((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+  async function handleAddEntryPhoto(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    try {
+      const prepared = await Promise.all(files.map(prepareImage));
+      setEntryPhotos((prev) => [...prev, ...prepared.map((p) => ({ display: p.display, fullRes: p.fullRes }))]);
+    } catch (err) {
+    }
+    e.target.value = "";
+  }
+  function removeEntryPhoto(idx) {
+    setEntryPhotos((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function resetEntryForm() {
+    setEntry(EMPTY_ENTRY);
+    setEntryPhotos([]);
+    setLightboxPhoto(null);
+    setShowQuickAdd(false);
+    setQuickEdition(EMPTY_EDITION);
+  }
+  function saveEntry() {
+    const isNew = !entry.id;
+    const id = entry.id || uid();
+    const ed = editionById[entry.editionId];
+    const newPhotos = entryPhotos.filter((p) => p.fullRes);
+    const slug = slugify(ed ? ed.name : entry.aiProposedName);
+    const finalized = {
+      ...entry,
+      id,
+      verified: true,
+      photo: entryPhotos[0]?.display || null,
+      photoFiles: entry.photoFiles || []
+    };
+    const nextInventory = entry.id ? inventory.map((it) => it.id === id ? { ...finalized, dateUpdated: (/* @__PURE__ */ new Date()).toISOString() } : it) : [...inventory, { ...finalized, dateAdded: (/* @__PURE__ */ new Date()).toISOString() }];
+    persistInventory(nextInventory);
+    if (newPhotos.length) {
+      downloadFullResPhotos(id, slug, newPhotos.map((p) => p.fullRes)).then((filenames) => {
+        persistInventory((prev) => prev.map(
+          (it) => it.id === id ? { ...it, photoFiles: [...it.photoFiles || [], ...filenames] } : it
+        ));
+      });
+    }
+
+    recordSave(nextInventory, editions);
+    resetEntryForm();
+    setTab("inventory");
+  }
+  async function handleCapturePhotos(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setCaptureError(null);
+    try {
+      const prepared = await Promise.all(files.map(prepareImage));
+      setPendingPhotos((prev) => [...prev, ...prepared].slice(0, 4));
+    } catch (err) {
+      setCaptureError("Couldn't read one of those photos \u2014 try again.");
+    }
+    e.target.value = "";
+  }
+  function removePendingPhoto(idx) {
+    setPendingPhotos((prev) => prev.filter((_, i) => i !== idx));
+  }
+  async function runIdentify() {
+    if (pendingPhotos.length === 0) return;
+    setIdentifying(true);
+    setCaptureError(null);
+    let ai = null;
+    let errorDetail = null;
+    try {
+      ai = await identifyNotebook(pendingPhotos.map((p) => p.apiImage));
+    } catch (err) {
+      ai = null;
+      errorDetail = err?.message || String(err);
+    }
+    const matchedEdition = ai && ai.proposedEditionName ? editions.find((e) => e.name.toLowerCase() === ai.proposedEditionName.toLowerCase()) : null;
+    const newEntryId = uid();
+    const slug = slugify(matchedEdition ? matchedEdition.name : ai?.proposedEditionName);
+    const newEntry = {
+      ...EMPTY_ENTRY,
+      id: newEntryId,
+      photo: pendingPhotos[0].thumb,
+      photoFiles: [],
+      editionId: matchedEdition ? matchedEdition.id : "",
+      verified: false,
+      aiProposedName: ai?.proposedEditionName || null,
+      aiConfidence: ai?.editionConfidence || null,
+      aiConditionNotes: ai?.conditionNotes || (errorDetail ? `AI error: ${errorDetail}` : ""),
+      aiConditionConfidence: ai?.conditionConfidence || null,
+      aiError: !ai,
+      aiEditionCode: ai?.editionCode || null,
+      aiSeasonYear: ai?.seasonYear || null,
+      aiEditionNotes: ai?.editionNotes || "",
+      aiMetadataConfidence: ai?.metadataConfidence || null,
+      aiMetadataSource: ai?.metadataSource || null,
+      coverCondition: coerce(ai?.coverCondition, COVER, COVER[0]),
+      cornerWear: coerce(ai?.cornerWear, CORNER, CORNER[0]),
+      spineStaples: coerce(ai?.spineStaples, SPINE, SPINE[0]),
+      pageCondition: coerce(ai?.pageCondition, PAGE, PAGE[0]),
+      completeness: coerce(ai?.completeness, COMPLETE, COMPLETE[0]),
+      bellyBand: coerce(ai?.bellyBand, BELLY, BELLY[2]),
+      notes: ai?.transcribedText ? `AI-read text: ${ai.transcribedText}` : "",
+      dateAdded: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    persistInventory((prev) => [...prev, newEntry]);
+    const nextInventory = [...inventory, newEntry];
+    downloadFullResPhotos(newEntryId, slug, pendingPhotos.map((p) => p.fullRes)).then((filenames) => {
+      persistInventory((prev) => prev.map(
+        (it) => it.id === newEntryId ? { ...it, photoFiles: filenames } : it
+      ));
+    });
+
+    recordSave(nextInventory, editions);
+    setPendingPhotos([]);
+    setIdentifying(false);
+    if (!ai) setCaptureError(`Identification failed: ${errorDetail || "unknown error"}. The photo and entry were still saved \u2014 check its notes, or review it manually.`);
+  }
+  function startEdit(item) {
+    setEntry(item);
+    const restored = item.photo ? [item.photo] : [];
+    setEntryPhotos(restored.map((src) => ({ display: src, fullRes: null })));
+    if (!item.editionId && item.aiProposedName) {
+      setShowQuickAdd(true);
+      let sourceTag = item.aiConfidence === "low" ? "AI-assisted ID (low confidence)" : "AI-assisted ID";
+      sourceTag += item.aiMetadataSource ? ` \u2014 season/year via ${item.aiMetadataSource}` : item.aiSeasonYear ? " \u2014 verify season/year" : " \u2014 verify";
+      setQuickEdition({
+        ...EMPTY_EDITION,
+        name: item.aiProposedName,
+        editionNumber: item.aiEditionCode || "",
+        seasonYear: item.aiSeasonYear || "",
+        notes: item.aiEditionNotes || "",
+        source: sourceTag
+      });
+    } else {
+      setShowQuickAdd(false);
+      setQuickEdition(EMPTY_EDITION);
+    }
+    setTab("intake");
+  }
+  function deleteEntry(id) {
+    persistInventory((prev) => prev.filter((it) => it.id !== id));
+    setConfirmDeleteId(null);
+  }
+  function copyFilenames(item) {
+    const text = (item.photoFiles || []).join("\n");
+    if (!text || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(item.id);
+      setTimeout(() => setCopiedId((c) => c === item.id ? null : c), 1500);
+    }).catch(() => {
+    });
+  }
+  const counts = {
+    total: inventory.length,
+    inStock: inventory.filter((i) => i.status === "In Stock").length,
+    listed: inventory.filter((i) => i.status === "Listed").length,
+    sold: inventory.filter((i) => i.status === "Sold").length
+  };
+  const needsReviewCount = inventory.filter((i) => !i.verified).length;
+  const editionById = Object.fromEntries(editions.map((e) => [e.id, e]));
+  const filteredInventory = inventory.filter((it) => {
+    if (reviewOnly && it.verified) return false;
+    if (!invSearch.trim()) return true;
+    const ed = editionById[it.editionId];
+    const haystack = `${ed ? ed.name : it.aiProposedName || "unidentified"} ${it.notes || ""}`.toLowerCase();
+    return haystack.includes(invSearch.toLowerCase());
+  });
+  const filteredEditions = editions.filter(
+    (e) => !editionSearch.trim() || e.name.toLowerCase().includes(editionSearch.toLowerCase())
+  );
+  if (!loaded) {
+    return /* @__PURE__ */ jsx("div", { className: "fn-root flex items-center justify-center min-h-screen text-sm text-stone-500", children: "Loading your manifest\u2026" });
+  }
+  return /* @__PURE__ */ jsxs("div", { className: "fn-root min-h-screen pb-10", children: [
+    /* @__PURE__ */ jsx("style", { children: `
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        .fn-root { background-color:#F4F0E6; background-image:linear-gradient(#E3DCC6 1px, transparent 1px),linear-gradient(90deg,#E3DCC6 1px, transparent 1px); background-size:22px 22px; color:#2B2622; font-family:'JetBrains Mono', ui-monospace, Menlo, monospace; }
+        .fn-display { font-family:'Space Grotesk', system-ui, sans-serif; }
+        .fn-header { background:#8B6F47; color:#F7F2E4; border-bottom:3px solid #6E5739; }
+        .fn-staple { display:flex; gap:6px; align-items:center; }
+        .fn-staple span { width:10px; height:2px; background:#D9786A; display:inline-block; border-radius:1px; }
+        .fn-tabbar { background:#EFE8D6; border-bottom:1px solid #D9D2BE; }
+        .fn-tab { color:#6B6359; border-bottom:2px solid transparent; background:transparent; }
+        .fn-tab.active { color:#B33A2E; border-bottom-color:#B33A2E; font-weight:600; }
+        .fn-card { background:#FFFDF8; border:1px solid #E3DCC6; }
+        .fn-btn-primary { background:#B33A2E; color:#FFFDF8; border:1px solid #9A2F25; }
+        .fn-btn-primary:hover:not(:disabled) { background:#9A2F25; }
+        .fn-btn-ghost { background:transparent; border:1px solid #D9D2BE; color:#2B2622; }
+        .fn-btn-ghost:hover { background:#EFE8D6; }
+        .fn-input, select.fn-input, textarea.fn-input { background:#FFFDF8; border:1px solid #D9D2BE; color:#2B2622; }
+        .fn-input:focus { outline:2px solid #B33A2E; outline-offset:1px; }
+        .fn-badge { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:600; letter-spacing:.02em; }
+        .fn-badge-instock { background:#E4EDE3; color:#2F5232; }
+        .fn-badge-listed { background:#FCEFD8; color:#8A5A12; }
+        .fn-badge-sold { background:#E9E4DC; color:#6B6359; }
+        .fn-badge-draft { background:#EFE1F5; color:#7A3F9E; }
+        .fn-add-tile { border:2px dashed #C9BFA0; background:transparent; }
+        .fn-add-tile:hover { background:#EFE8D6; }
+        @media (prefers-reduced-motion: no-preference) { .fn-fade { animation: fnFade .16s ease-out; } }
+        @keyframes fnFade { from { opacity:0; transform:translateY(2px);} to { opacity:1; transform:translateY(0);} }
+      ` }),
+    /* @__PURE__ */ jsxs("div", { className: "fn-header px-4 py-3", children: [
+      /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
+        /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsx("h1", { className: "fn-display text-lg font-bold tracking-tight leading-none", children: "FIELD LOG" }),
+          /* @__PURE__ */ jsx("p", { className: "text-xs opacity-80 mt-1", children: "Notebook intake & collection manifest" })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsx("button", { onClick: () => setShowSettings((s) => !s), className: "text-xs font-mono opacity-70 underline", children: getApiKey() ? "Settings" : "Set API key" }),
+          /* @__PURE__ */ jsx("span", { className: "text-xs font-mono opacity-70", children: APP_VERSION }),
+          /* @__PURE__ */ jsxs("div", { className: "fn-staple", "aria-hidden": "true", children: [
+            /* @__PURE__ */ jsx("span", {}),
+            /* @__PURE__ */ jsx("span", {}),
+            /* @__PURE__ */ jsx("span", {})
+          ] })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "flex gap-3 mt-3 text-xs font-medium flex-wrap", children: [
+        /* @__PURE__ */ jsxs("span", { children: [
+          counts.total,
+          " CATALOGUED"
+        ] }),
+        /* @__PURE__ */ jsxs("span", { children: [
+          counts.inStock,
+          " IN STOCK"
+        ] }),
+        /* @__PURE__ */ jsxs("span", { children: [
+          counts.listed,
+          " LISTED"
+        ] }),
+        /* @__PURE__ */ jsxs("span", { children: [
+          counts.sold,
+          " SOLD"
+        ] })
+      ] })
+    ] }),
+    showSettings && /* @__PURE__ */ jsxs("div", { className: "px-4 py-3 bg-stone-100 border-b border-stone-300 text-xs space-y-2", children: [
+      /* @__PURE__ */ jsx("p", { className: "font-medium", children: "Anthropic API key" }),
+      /* @__PURE__ */ jsx("p", { className: "opacity-70", children: "Used directly from this page for notebook ID and pricing lookups. Stored only on this device (localStorage), never sent anywhere but api.anthropic.com." }),
+      /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "password",
+            value: apiKeyInput,
+            onChange: (e) => setApiKeyInput(e.target.value),
+            placeholder: "sk-ant-...",
+            className: "fn-input flex-1 text-xs"
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            onClick: () => {
+              setApiKey(apiKeyInput.trim());
+              setShowSettings(false);
+            },
+            className: "fn-btn-primary px-3 py-1 text-xs",
+            children: "Save"
+          }
+        )
+      ] })
+    ] }),
+    /* @__PURE__ */ jsx("div", { className: "fn-tabbar flex sticky top-0 z-10", children: TABS.map((t) => /* @__PURE__ */ jsx(
+      "button",
+      {
+        onClick: () => setTab(t.key),
+        className: `fn-tab flex-1 py-2.5 text-xs font-medium tracking-wide uppercase ${tab === t.key ? "active" : ""}`,
+        children: t.label
+      },
+      t.key
+    )) }),
+    saveError && /* @__PURE__ */ jsx("div", { className: "bg-red-50 text-red-700 text-xs px-4 py-2 border-b border-red-200", children: "Last save didn't reach storage. Your data is still here on screen \u2014 try the action again." }),
+    autoBackupNotice && /* @__PURE__ */ jsxs("div", { className: "bg-emerald-50 text-emerald-700 text-xs px-4 py-2 border-b border-emerald-200", children: [
+      "Auto-backup downloaded after save #",
+      autoBackupNotice,
+      " \u2014 check your downloads folder."
+    ] }),
+    restoreNotice && /* @__PURE__ */ jsxs("div", { className: "bg-emerald-50 text-emerald-700 text-xs px-4 py-2 border-b border-emerald-200", children: [
+      "Restored ",
+      restoreNotice.items,
+      " items and ",
+      restoreNotice.editions,
+      " editions from backup."
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "px-4 py-4 max-w-md mx-auto", children: [
+      tab === "capture" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500", children: 'Add 1\u20133 photos of one notebook \u2014 cover and the colophon/back page work best \u2014 then identify it. Repeat per notebook; each one lands in Inventory marked "AI draft" until you confirm it.' }),
+        /* @__PURE__ */ jsxs("label", { className: "fn-card rounded flex flex-col items-center justify-center gap-2 p-4 cursor-pointer", children: [
+          /* @__PURE__ */ jsx(Camera, { size: 24 }),
+          /* @__PURE__ */ jsx("span", { className: "text-xs text-stone-500", children: "Add photo(s) for this notebook" }),
+          /* @__PURE__ */ jsx("input", { type: "file", accept: "image/*", multiple: true, className: "hidden", onChange: handleCapturePhotos })
+        ] }),
+        pendingPhotos.length > 0 && /* @__PURE__ */ jsx("div", { className: "flex gap-2 flex-wrap", children: pendingPhotos.map((p, i) => /* @__PURE__ */ jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsx("img", { src: p.thumb, alt: "", className: "w-16 h-16 object-cover rounded fn-card" }),
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              onClick: () => removePendingPhoto(i),
+              "aria-label": "Remove photo",
+              className: "absolute -top-1.5 -right-1.5 bg-stone-800 text-white rounded-full p-0.5",
+              children: /* @__PURE__ */ jsx(X, { size: 10 })
+            }
+          )
+        ] }, i)) }),
+        captureError && /* @__PURE__ */ jsx("div", { className: "text-xs text-red-600", children: captureError }),
+        /* @__PURE__ */ jsx(
+          "button",
+          {
+            onClick: runIdentify,
+            disabled: pendingPhotos.length === 0 || identifying,
+            className: "fn-btn-primary rounded px-4 py-2 text-sm font-medium disabled:opacity-40",
+            children: identifying ? `Identifying\u2026 (${identifyElapsed}s)` : "Identify with AI"
+          }
+        ),
+        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400", children: needsReviewCount > 0 ? `${needsReviewCount} entr${needsReviewCount === 1 ? "y" : "ies"} waiting in the review queue \u2014 check Inventory.` : "Review queue is empty." })
+      ] }),
+      tab === "intake" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
+        entry.id && /* @__PURE__ */ jsx("div", { className: "text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1.5", children: "Editing an existing entry." }),
+        entry.aiProposedName && !entry.editionId && /* @__PURE__ */ jsxs("div", { className: "text-xs bg-purple-50 border border-purple-200 rounded px-2 py-1.5", children: [
+          'AI proposed "',
+          entry.aiProposedName,
+          '"',
+          entry.aiConfidence === "low" ? " (low confidence)" : "",
+          " \u2014 it's not in your Editions table yet, so it can't show as a dropdown option. Confirm it in the form below, or cancel that and pick a different existing edition instead.",
+          entry.aiSeasonYear ? ` Season/year (${entry.aiSeasonYear}) was ${entry.aiMetadataSource ? "checked against " + entry.aiMetadataSource : "not independently confirmed"} \u2014 verify before relying on it.` : " Season/year couldn't be confirmed, so it was left blank rather than guessed.",
+          /* @__PURE__ */ jsxs("div", { className: "mt-1", children: [
+            "Item code read: ",
+            entry.aiEditionCode || "(none)",
+            " \xB7 Metadata confidence: ",
+            entry.aiMetadataConfidence || "n/a"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx(Field, { label: "Photos", htmlFor: "entry-photos-add", children: /* @__PURE__ */ jsxs("div", { className: "flex gap-2 overflow-x-auto pb-1", children: [
+          entryPhotos.map((p, i) => /* @__PURE__ */ jsxs("div", { className: "relative shrink-0", children: [
+            /* @__PURE__ */ jsx("button", { type: "button", onClick: () => setLightboxPhoto(p.display), className: "block", children: /* @__PURE__ */ jsx("img", { src: p.display, alt: `Notebook photo ${i + 1}`, className: "w-20 h-20 object-cover rounded fn-card" }) }),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => removeEntryPhoto(i),
+                "aria-label": "Remove photo",
+                className: "absolute -top-1.5 -right-1.5 bg-stone-800 text-white rounded-full p-0.5",
+                children: /* @__PURE__ */ jsx(X, { size: 10 })
+              }
+            )
+          ] }, i)),
+          /* @__PURE__ */ jsxs("label", { className: "fn-add-tile w-20 h-20 shrink-0 rounded flex flex-col items-center justify-center gap-1 cursor-pointer", children: [
+            /* @__PURE__ */ jsx(Camera, { size: 18 }),
+            /* @__PURE__ */ jsx("span", { className: "text-xs text-stone-500", children: "Add" }),
+            /* @__PURE__ */ jsx("input", { id: "entry-photos-add", type: "file", accept: "image/*", multiple: true, className: "hidden", onChange: handleAddEntryPhoto })
+          ] })
+        ] }) }),
+        /* @__PURE__ */ jsx(Field, { label: "Edition", htmlFor: "entry-edition", children: /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+          /* @__PURE__ */ jsxs(
+            "select",
+            {
+              id: "entry-edition",
+              value: entry.editionId,
+              onChange: (e) => setEntry({ ...entry, editionId: e.target.value }),
+              className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+              children: [
+                /* @__PURE__ */ jsx("option", { value: "", children: "\u2014 Unidentified \u2014" }),
+                editions.map((e) => /* @__PURE__ */ jsxs("option", { value: e.id, children: [
+                  e.name,
+                  e.seasonYear ? ` (${e.seasonYear})` : ""
+                ] }, e.id))
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              onClick: () => setShowQuickAdd((s) => !s),
+              title: "Add new edition",
+              className: "fn-btn-ghost rounded px-2.5 shrink-0",
+              children: /* @__PURE__ */ jsx(Plus, { size: 16 })
+            }
+          )
+        ] }) }),
+        showQuickAdd && /* @__PURE__ */ jsx(
+          EditionForm,
+          {
+            value: quickEdition,
+            onChange: setQuickEdition,
+            submitLabel: "Add edition",
+            onCancel: () => {
+              setShowQuickAdd(false);
+              setQuickEdition(EMPTY_EDITION);
+            },
+            onSubmit: () => addEdition(quickEdition, (newEd) => {
+              setEntry((prev) => ({ ...prev, editionId: newEd.id }));
+              setShowQuickAdd(false);
+              setQuickEdition(EMPTY_EDITION);
+            })
+          }
+        ),
+        /* @__PURE__ */ jsx(Field, { label: "Quantity (individual books)", htmlFor: "entry-qty", children: /* @__PURE__ */ jsx(
+          "input",
+          {
+            id: "entry-qty",
+            type: "number",
+            min: "1",
+            className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+            value: entry.quantity,
+            onChange: (e) => setEntry({ ...entry, quantity: e.target.value })
+          }
+        ) }),
+        /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+          /* @__PURE__ */ jsx(Field, { label: "Cover", htmlFor: "c1", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c1",
+              options: COVER,
+              value: entry.coverCondition,
+              onChange: (e) => setEntry({ ...entry, coverCondition: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Corner wear", htmlFor: "c2", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c2",
+              options: CORNER,
+              value: entry.cornerWear,
+              onChange: (e) => setEntry({ ...entry, cornerWear: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Spine / staples", htmlFor: "c3", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c3",
+              options: SPINE,
+              value: entry.spineStaples,
+              onChange: (e) => setEntry({ ...entry, spineStaples: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Pages", htmlFor: "c4", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c4",
+              options: PAGE,
+              value: entry.pageCondition,
+              onChange: (e) => setEntry({ ...entry, pageCondition: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Completeness", htmlFor: "c5", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c5",
+              options: COMPLETE,
+              value: entry.completeness,
+              onChange: (e) => setEntry({ ...entry, completeness: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Belly band", htmlFor: "c6", children: /* @__PURE__ */ jsx(
+            Select,
+            {
+              id: "c6",
+              options: BELLY,
+              value: entry.bellyBand,
+              onChange: (e) => setEntry({ ...entry, bellyBand: e.target.value })
+            }
+          ) })
+        ] }),
+        entry.id && (() => {
+          const stats = priceStats(entry.priceObservations);
+          return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
+              /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-stone-500", children: "Value (this copy)" }),
+              /* @__PURE__ */ jsxs(
+                "button",
+                {
+                  onClick: () => runPriceLookup(entry),
+                  disabled: pricingLoading === entry.id,
+                  className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1 disabled:opacity-50",
+                  children: [
+                    /* @__PURE__ */ jsx(RefreshCw, { size: 12 }),
+                    " ",
+                    pricingLoading === entry.id ? `Searching\u2026 (${pricingElapsed}s)` : "Refresh pricing"
+                  ]
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-600", children: stats ? `$${stats.min}\u2013$${stats.max} \xB7 avg $${Math.round(stats.avg)} \xB7 ${stats.count} logged` : "No pricing logged yet" }),
+            /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400", children: "Based only on what's logged below for this specific copy \\u2014 not a market census. Facebook and login-gated sites (Terapeak, WorthPoint) need to be checked and logged by hand." }),
+            pricingError && pricingLoading !== entry.id && /* @__PURE__ */ jsx("div", { className: "text-xs text-red-600", children: pricingError }),
+            pendingResults[entry.id]?.length > 0 && /* @__PURE__ */ jsxs("div", { className: "rounded p-2 flex flex-col gap-1.5", style: { background: "#EFE1F5", border: "1px solid #D8B9E8" }, children: [
+              /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium", style: { color: "#7A3F9E" }, children: [
+                pendingResults[entry.id].length,
+                " found \\u2014 not saved yet"
+              ] }),
+              pendingResults[entry.id].map((o) => /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-700", children: [
+                /* @__PURE__ */ jsxs("span", { className: "font-semibold", children: [
+                  "$",
+                  o.price
+                ] }),
+                " \\u00b7 ",
+                o.type,
+                " \\u00b7 ",
+                o.source,
+                o.date ? ` \xB7 ${o.date}` : "",
+                o.note ? ` \u2014 ${o.note}` : ""
+              ] }, o.id)),
+              /* @__PURE__ */ jsxs("div", { className: "flex gap-2 mt-1", children: [
+                /* @__PURE__ */ jsx(
+                  "button",
+                  {
+                    onClick: () => commitPendingResults(entry.id),
+                    className: "fn-btn-primary rounded px-3 py-1.5 text-xs",
+                    children: "Save to log"
+                  }
+                ),
+                /* @__PURE__ */ jsx(
+                  "button",
+                  {
+                    onClick: () => discardPendingResults(entry.id),
+                    className: "fn-btn-ghost rounded px-3 py-1.5 text-xs",
+                    children: "Discard"
+                  }
+                )
+              ] })
+            ] }),
+            (entry.priceObservations || []).slice().reverse().map((o) => /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2 text-xs bg-stone-50 rounded px-2 py-1.5", children: [
+              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                /* @__PURE__ */ jsxs("span", { className: "font-semibold", children: [
+                  "$",
+                  o.price
+                ] }),
+                " ",
+                /* @__PURE__ */ jsxs("span", { className: "text-stone-500", children: [
+                  o.type,
+                  o.date ? ` \xB7 ${o.date}` : "",
+                  " \\u00b7 ",
+                  o.source,
+                  o.addedBy === "ai" ? " \xB7 AI" : " \xB7 manual"
+                ] }),
+                o.note && /* @__PURE__ */ jsx("div", { className: "text-stone-500", children: o.note }),
+                o.sourceUrl && /* @__PURE__ */ jsxs(
+                  "a",
+                  {
+                    href: o.sourceUrl,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    className: "text-stone-500 inline-flex items-center gap-0.5 underline",
+                    children: [
+                      "source ",
+                      /* @__PURE__ */ jsx(ExternalLink, { size: 10 })
+                    ]
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsx(
+                "button",
+                {
+                  onClick: () => deletePriceObservation(entry.id, o.id),
+                  "aria-label": "Remove price observation",
+                  className: "text-stone-400 shrink-0",
+                  children: /* @__PURE__ */ jsx(X, { size: 12 })
+                }
+              )
+            ] }, o.id)),
+            /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2 mt-1", children: [
+              /* @__PURE__ */ jsx(
+                "input",
+                {
+                  type: "number",
+                  step: "0.01",
+                  placeholder: "Price $",
+                  value: priceDraft.price,
+                  onChange: (ev) => setPriceDraft({ ...priceDraft, price: ev.target.value }),
+                  className: "fn-input rounded px-2 py-1.5 text-xs w-full"
+                }
+              ),
+              /* @__PURE__ */ jsxs(
+                "select",
+                {
+                  value: priceDraft.type,
+                  onChange: (ev) => setPriceDraft({ ...priceDraft, type: ev.target.value }),
+                  className: "fn-input rounded px-2 py-1.5 text-xs w-full",
+                  children: [
+                    /* @__PURE__ */ jsx("option", { value: "asking", children: "Asking" }),
+                    /* @__PURE__ */ jsx("option", { value: "sold", children: "Sold" }),
+                    /* @__PURE__ */ jsx("option", { value: "mentioned", children: "Mentioned" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsx(
+                "input",
+                {
+                  placeholder: "Source (e.g. Facebook group)",
+                  value: priceDraft.source,
+                  onChange: (ev) => setPriceDraft({ ...priceDraft, source: ev.target.value }),
+                  className: "fn-input rounded px-2 py-1.5 text-xs w-full col-span-2"
+                }
+              ),
+              /* @__PURE__ */ jsx(
+                "input",
+                {
+                  type: "date",
+                  value: priceDraft.date,
+                  onChange: (ev) => setPriceDraft({ ...priceDraft, date: ev.target.value }),
+                  className: "fn-input rounded px-2 py-1.5 text-xs w-full"
+                }
+              ),
+              /* @__PURE__ */ jsx(
+                "input",
+                {
+                  placeholder: "Note",
+                  value: priceDraft.note,
+                  onChange: (ev) => setPriceDraft({ ...priceDraft, note: ev.target.value }),
+                  className: "fn-input rounded px-2 py-1.5 text-xs w-full"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: () => addPriceObservation(entry.id),
+                disabled: !priceDraft.price,
+                className: "fn-btn-primary rounded px-3 py-1.5 text-xs self-start disabled:opacity-40",
+                children: "Log observation"
+              }
+            )
+          ] });
+        })(),
+        /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+          /* @__PURE__ */ jsx(Field, { label: "Date acquired", htmlFor: "entry-date", children: /* @__PURE__ */ jsx(
+            "input",
+            {
+              id: "entry-date",
+              type: "date",
+              className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+              value: entry.dateAcquired,
+              onChange: (e) => setEntry({ ...entry, dateAcquired: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Cost basis ($)", htmlFor: "entry-cost", children: /* @__PURE__ */ jsx(
+            "input",
+            {
+              id: "entry-cost",
+              type: "number",
+              step: "0.01",
+              className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+              value: entry.cost,
+              onChange: (e) => setEntry({ ...entry, cost: e.target.value })
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsx(Field, { label: "Status", htmlFor: "entry-status", children: /* @__PURE__ */ jsx(
+          Select,
+          {
+            id: "entry-status",
+            options: STATUS,
+            value: entry.status,
+            onChange: (e) => setEntry({ ...entry, status: e.target.value })
+          }
+        ) }),
+        entry.status === "Sold" && /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
+          /* @__PURE__ */ jsx(Field, { label: "Sale price ($)", htmlFor: "entry-sale", children: /* @__PURE__ */ jsx(
+            "input",
+            {
+              id: "entry-sale",
+              type: "number",
+              step: "0.01",
+              className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+              value: entry.salePrice,
+              onChange: (e) => setEntry({ ...entry, salePrice: e.target.value })
+            }
+          ) }),
+          /* @__PURE__ */ jsx(Field, { label: "Platform", htmlFor: "entry-platform", children: /* @__PURE__ */ jsx(
+            "input",
+            {
+              id: "entry-platform",
+              className: "fn-input rounded px-2 py-1.5 text-sm w-full",
+              value: entry.soldPlatform,
+              onChange: (e) => setEntry({ ...entry, soldPlatform: e.target.value }),
+              placeholder: "eBay, Etsy..."
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsx(Field, { label: "Notes", htmlFor: "entry-notes", children: /* @__PURE__ */ jsx(
+          "textarea",
+          {
+            id: "entry-notes",
+            rows: 2,
+            className: "fn-input rounded px-2 py-1.5 text-sm w-full resize-none",
+            value: entry.notes,
+            onChange: (e) => setEntry({ ...entry, notes: e.target.value })
+          }
+        ) }),
+        /* @__PURE__ */ jsxs("div", { className: "flex gap-2 justify-end pt-1", children: [
+          entry.id && /* @__PURE__ */ jsx("button", { onClick: resetEntryForm, className: "fn-btn-ghost rounded px-3 py-2 text-sm", children: "Cancel edit" }),
+          /* @__PURE__ */ jsxs("button", { onClick: saveEntry, className: "fn-btn-primary rounded px-4 py-2 text-sm font-medium flex items-center gap-1.5", children: [
+            /* @__PURE__ */ jsx(Check, { size: 16 }),
+            " ",
+            entry.id ? "Update entry" : "Save entry"
+          ] })
+        ] })
+      ] }),
+      tab === "inventory" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: () => setReviewOnly(false),
+              className: `rounded px-3 py-1.5 text-xs flex-1 ${!reviewOnly ? "fn-btn-primary" : "fn-btn-ghost"}`,
+              children: [
+                "All (",
+                counts.total,
+                ")"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: () => setReviewOnly(true),
+              className: `rounded px-3 py-1.5 text-xs flex-1 ${reviewOnly ? "fn-btn-primary" : "fn-btn-ghost"}`,
+              children: [
+                "Needs review (",
+                needsReviewCount,
+                ")"
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+          /* @__PURE__ */ jsxs("div", { className: "relative flex-1", children: [
+            /* @__PURE__ */ jsx(Search, { size: 14, className: "absolute left-2 top-1/2 -translate-y-1/2 text-stone-400" }),
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                value: invSearch,
+                onChange: (e) => setInvSearch(e.target.value),
+                placeholder: "Search by edition or note",
+                className: "fn-input rounded pl-7 pr-2 py-1.5 text-sm w-full"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: () => downloadCSV(toCSV(inventory, editions)),
+              disabled: inventory.length === 0,
+              className: "fn-btn-ghost rounded px-3 py-1.5 text-sm flex items-center gap-1.5 disabled:opacity-40 shrink-0",
+              children: [
+                /* @__PURE__ */ jsx(Download, { size: 14 }),
+                " CSV"
+              ]
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "flex gap-2 flex-wrap items-start", children: [
+          /* @__PURE__ */ jsxs(
+            "button",
+            {
+              onClick: runManualBackup,
+              disabled: backingUp || inventory.length === 0 && editions.length === 0,
+              className: "fn-btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-40",
+              children: [
+                /* @__PURE__ */ jsx(Download, { size: 12 }),
+                " ",
+                backingUp ? "Building backup\u2026" : "Backup everything (JSON)"
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxs("label", { className: "fn-btn-ghost rounded px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer", children: [
+            /* @__PURE__ */ jsx(Upload, { size: 12 }),
+            " Restore from backup",
+            /* @__PURE__ */ jsx("input", { type: "file", accept: "application/json,.json", className: "hidden", onChange: handleRestoreFile })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-400", children: [
+          "Auto-backup every ",
+          AUTO_BACKUP_EVERY,
+          " saves \u2014 ",
+          AUTO_BACKUP_EVERY - saveCount % AUTO_BACKUP_EVERY,
+          " to go (save #",
+          saveCount,
+          " so far)."
+        ] }),
+        restoreError && /* @__PURE__ */ jsx("div", { className: "text-xs text-red-600", children: restoreError }),
+        pendingRestore && /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", style: { borderColor: "#B33A2E" }, children: [
+          /* @__PURE__ */ jsx("div", { className: "text-xs font-semibold", style: { color: "#B33A2E" }, children: "Confirm restore" }),
+          /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-600", children: [
+            "Backup exported ",
+            pendingRestore.exportedAt ? new Date(pendingRestore.exportedAt).toLocaleString() : "unknown date",
+            ": ",
+            pendingRestore.inventory.length,
+            " items, ",
+            pendingRestore.editions.length,
+            " editions."
+          ] }),
+          (inventory.length > 0 || editions.length > 0) && /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium", style: { color: "#B33A2E" }, children: [
+            "This replaces what's currently here \u2014 ",
+            inventory.length,
+            " items and ",
+            editions.length,
+            " editions \u2014 with the backup. Not reversible from inside the app."
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
+            /* @__PURE__ */ jsx(
+              "button",
+              {
+                onClick: confirmRestore,
+                disabled: restoring,
+                className: "fn-btn-primary rounded px-3 py-1.5 text-xs disabled:opacity-50",
+                children: restoring ? "Restoring\u2026" : "Restore"
+              }
+            ),
+            /* @__PURE__ */ jsx("button", { onClick: cancelRestore, disabled: restoring, className: "fn-btn-ghost rounded px-3 py-1.5 text-xs", children: "Cancel" })
+          ] })
+        ] }),
+        filteredInventory.length === 0 && /* @__PURE__ */ jsx("div", { className: "fn-card rounded p-4 text-sm text-stone-500 text-center", children: inventory.length === 0 ? "No notebooks logged yet. Use Capture or Intake to add your first one." : "No entries match this view." }),
+        filteredInventory.slice().reverse().map((item, idx) => {
+          const ed = editionById[item.editionId];
+          const badgeClass = item.status === "In Stock" ? "fn-badge-instock" : item.status === "Listed" ? "fn-badge-listed" : "fn-badge-sold";
+          const displayName = ed ? ed.name : item.aiProposedName ? `${item.aiProposedName}?` : "Unidentified";
+          return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex gap-3", children: [
+            item.photo ? /* @__PURE__ */ jsx("img", { src: item.photo, alt: "", className: "w-14 h-14 object-cover rounded shrink-0" }) : /* @__PURE__ */ jsx("div", { className: "w-14 h-14 rounded bg-stone-100 shrink-0" }),
+            /* @__PURE__ */ jsxs("div", { className: "flex-1 min-w-0", children: [
+              /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2", children: [
+                /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                  /* @__PURE__ */ jsx("div", { className: "text-sm font-semibold truncate fn-display", children: displayName }),
+                  /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-500", children: [
+                    ed?.seasonYear || "\u2014",
+                    " \xB7 qty ",
+                    item.quantity
+                  ] })
+                ] }),
+                /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-end gap-1 shrink-0", children: [
+                  /* @__PURE__ */ jsx("span", { className: `fn-badge ${badgeClass}`, children: item.status }),
+                  !item.verified && /* @__PURE__ */ jsx("span", { className: "fn-badge fn-badge-draft", children: "AI draft" })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-500 mt-1", children: [
+                item.coverCondition,
+                " cover \xB7 ",
+                item.cornerWear.toLowerCase(),
+                " corner wear",
+                (() => {
+                  const vstats = priceStats(item.priceObservations);
+                  return vstats ? ` \xB7 avg $${Math.round(vstats.avg)}` : "";
+                })()
+              ] }),
+              !item.verified && (item.aiConditionNotes || item.aiConfidence) && /* @__PURE__ */ jsxs("div", { className: "text-xs text-purple-700 mt-1 italic", children: [
+                item.aiConfidence === "low" && "Low-confidence ID. ",
+                item.aiConditionNotes
+              ] }),
+              !item.verified && item.aiProposedName && /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-400 mt-0.5", children: [
+                "Item code: ",
+                item.aiEditionCode || "(none)",
+                " \xB7 Season/year: ",
+                item.aiSeasonYear || "(unconfirmed)"
+              ] }),
+              !item.verified && item.notes && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500 mt-1", children: item.notes }),
+              item.photoFiles?.length > 0 && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400 mt-1 font-mono truncate", title: item.photoFiles.join(", "), children: item.photoFiles.join(", ") }),
+              /* @__PURE__ */ jsxs("div", { className: "flex gap-2 mt-2 flex-wrap", children: [
+                /* @__PURE__ */ jsxs("button", { onClick: () => startEdit(item), className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1", children: [
+                  /* @__PURE__ */ jsx(Pencil, { size: 12 }),
+                  " ",
+                  item.verified ? "Edit" : "Review"
+                ] }),
+                item.photoFiles?.length > 0 && /* @__PURE__ */ jsxs("button", { onClick: () => copyFilenames(item), className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1", children: [
+                  /* @__PURE__ */ jsx(Copy, { size: 12 }),
+                  " ",
+                  copiedId === item.id ? "Copied" : "Copy filenames"
+                ] }),
+                confirmDeleteId === item.id ? /* @__PURE__ */ jsxs(Fragment, { children: [
+                  /* @__PURE__ */ jsx("button", { onClick: () => deleteEntry(item.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Confirm delete" }),
+                  /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(null), className: "fn-btn-ghost rounded px-2 py-1 text-xs", children: "Cancel" })
+                ] }) : /* @__PURE__ */ jsxs("button", { onClick: () => setConfirmDeleteId(item.id), className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1", children: [
+                  /* @__PURE__ */ jsx(Trash2, { size: 12 }),
+                  " Delete"
+                ] })
+              ] })
+            ] })
+          ] }, item.id);
+        })
+      ] }),
+      tab === "editions" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsx(Search, { size: 14, className: "absolute left-2 top-1/2 -translate-y-1/2 text-stone-400" }),
+          /* @__PURE__ */ jsx(
+            "input",
+            {
+              value: editionSearch,
+              onChange: (e) => setEditionSearch(e.target.value),
+              placeholder: "Search editions",
+              className: "fn-input rounded pl-7 pr-2 py-1.5 text-sm w-full"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsx(
+          EditionForm,
+          {
+            value: editionDraft,
+            onChange: setEditionDraft,
+            submitLabel: "Add edition",
+            onSubmit: () => addEdition(editionDraft, () => setEditionDraft(EMPTY_EDITION))
+          }
+        ),
+        filteredEditions.length === 0 && /* @__PURE__ */ jsx("div", { className: "fn-card rounded p-4 text-sm text-stone-500 text-center", children: editions.length === 0 ? "No editions catalogued yet. Add one above \u2014 pull specs from fieldnotesbrand.com/limited-editions-archive, or send me a photo in chat and I'll help verify it first." : "No editions match that search." }),
+        filteredEditions.slice().reverse().map((e) => {
+          const expanded = expandedEditionId === e.id;
+          return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded overflow-hidden", children: [
+            /* @__PURE__ */ jsxs(
+              "button",
+              {
+                onClick: () => setExpandedEditionId(expanded ? null : e.id),
+                className: "w-full text-left p-3 flex items-center justify-between gap-2",
+                children: [
+                  /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                    /* @__PURE__ */ jsx("div", { className: "text-sm font-semibold fn-display truncate", children: e.name }),
+                    /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500", children: e.seasonYear || "season/year not set" })
+                  ] }),
+                  /* @__PURE__ */ jsxs("div", { className: "text-right shrink-0 flex items-center gap-2", children: [
+                    /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500", children: e.editionNumber || "no FN id" }),
+                    expanded ? /* @__PURE__ */ jsx(ChevronUp, { size: 14 }) : /* @__PURE__ */ jsx(ChevronDown, { size: 14 })
+                  ] })
+                ]
+              }
+            ),
+            expanded && /* @__PURE__ */ jsxs("div", { className: "px-3 pb-3 flex items-start justify-between gap-2 pt-2 border-t border-stone-200", children: [
+              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                e.notes && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-600", children: e.notes }),
+                e.source && /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-400 mt-0.5", children: [
+                  "Source: ",
+                  e.source
+                ] })
+              ] }),
+              confirmDeleteId === e.id ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1 shrink-0", children: [
+                /* @__PURE__ */ jsx("button", { onClick: () => deleteEdition(e.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Confirm" }),
+                /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(null), className: "fn-btn-ghost rounded px-2 py-1 text-xs", children: "Cancel" })
+              ] }) : /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(e.id), className: "fn-btn-ghost rounded p-1.5 shrink-0", children: /* @__PURE__ */ jsx(X, { size: 14 }) })
+            ] })
+          ] }, e.id);
+        })
+      ] })
+    ] }),
+    lightboxPhoto && /* @__PURE__ */ jsxs(
+      "div",
+      {
+        onClick: () => setLightboxPhoto(null),
+        className: "fixed inset-0 flex items-center justify-center p-6 z-50",
+        style: { backgroundColor: "rgba(20,16,12,0.9)" },
+        children: [
+          /* @__PURE__ */ jsx("img", { src: lightboxPhoto, alt: "Enlarged notebook photo", className: "max-w-full max-h-full object-contain rounded" }),
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              onClick: () => setLightboxPhoto(null),
+              "aria-label": "Close",
+              className: "absolute top-4 right-4 bg-white rounded-full p-2",
+              children: /* @__PURE__ */ jsx(X, { size: 20 })
+            }
+          )
+        ]
+      }
+    )
+  ] });
+}
+export {
+  App as default
+};
+
+import { createRoot } from "react-dom/client";
+import { createElement } from "react";
+const root = createRoot(document.getElementById("root"));
+root.render(createElement(App));
+</script>
+</body>
+</html>
