@@ -373,10 +373,12 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v24";
+var APP_VERSION = "v26";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v26 2026-07-09  Revert Re-identify to file picker — requires new photos for reliable text recognition
+v25 2026-07-09  Re-identify uses stored thumbnail directly — no file picker
 v24 2026-07-09  Re-identify button on failed inventory entries — re-supply photos, patches entry in place
 v23 2026-07-09  Reduce API image 1568px→1024px to cut payload and iOS fetch timeout risk
 v22 2026-07-09  Capture tab: batch queue — add notebooks 2-at-a-time, process all in sequence
