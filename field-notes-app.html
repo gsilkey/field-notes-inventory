@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v20";
+var APP_VERSION = "v21";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v21 2026-07-09  Fix false save banner: only setSaveError on thrown exceptions, not unreadable no-cors return value
 v20 2026-07-09  Fix Sheets writes: switch postToSheet to no-cors fire-and-forget (Apps Script redirect was blocking response, causing false save failures)
 v19 2026-07-09  Fix JSON parse: strip prose preamble before { to handle model narration before JSON output
 v18 2026-07-09  web_search 20250305→20260209; max_uses split (identify:2 / pricing:5); pricing lookup opt-in only
@@ -894,14 +895,14 @@ function App() {
   const persistEditions = useCallback((updater) => {
     setEditions((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      diffAndSync("editions", prev, next).then((ok) => setSaveError(!ok));
+      diffAndSync("editions", prev, next).catch(() => setSaveError(true));
       return next;
     });
   }, []);
   const persistInventory = useCallback((updater) => {
     setInventory((prev) => {
       const next = typeof updater === "function" ? updater(prev) : updater;
-      diffAndSync("inventory", prev, next).then((ok) => setSaveError(!ok));
+      diffAndSync("inventory", prev, next).catch(() => setSaveError(true));
       return next;
     });
   }, []);
