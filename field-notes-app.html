@@ -373,13 +373,14 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v19";
+var APP_VERSION = "v20";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
-v19 2026-07-09  Fix JSON parse: strip prose preamble before { to handle model adding narration before JSON output
+v20 2026-07-09  Fix Sheets writes: switch postToSheet to no-cors fire-and-forget (Apps Script redirect was blocking response, causing false save failures)
+v19 2026-07-09  Fix JSON parse: strip prose preamble before { to handle model narration before JSON output
 v18 2026-07-09  web_search 20250305→20260209; max_uses split (identify:2 / pricing:5); pricing lookup opt-in only
-v17 (prior session) Google Sheets backend; JSONP reads; static stylesheet replacing Tailwind CDN; API key via localStorage
+v17 (prior session) Google Sheets backend; static stylesheet replacing Tailwind CDN; API key via localStorage
 v16 (prior session) baseline at GitHub Pages deploy
 */
 var EMPTY_ENTRY = {
@@ -709,14 +710,13 @@ async function fetchTab(tab) {
 }
 async function postToSheet(body) {
   try {
-    const res = await fetch(SHEETS_URL, {
+    await fetch(SHEETS_URL, {
       method: "POST",
+      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(body)
     });
-    if (!res.ok) return false;
-    const data = await res.json();
-    return !!data.ok;
+    return true;
   } catch (e) {
     return false;
   }
