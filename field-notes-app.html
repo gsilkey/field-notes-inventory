@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v18";
+var APP_VERSION = "v19";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v19 2026-07-09  Fix JSON parse: strip prose preamble before { to handle model adding narration before JSON output
 v18 2026-07-09  web_search 20250305→20260209; max_uses split (identify:2 / pricing:5); pricing lookup opt-in only
 v17 (prior session) Google Sheets backend; JSONP reads; static stylesheet replacing Tailwind CDN; API key via localStorage
 v16 (prior session) baseline at GitHub Pages deploy
@@ -646,8 +647,10 @@ async function callClaudeJSON(content, maxTokens, maxSearchUses = 4) {
   const textBlocks = (data.content || []).filter((b) => b.type === "text");
   const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : "";
   const cleaned = text.replace(/```json|```/g, "").trim();
+  const jsonStart = cleaned.indexOf("{");
+  const jsonStr = jsonStart > 0 ? cleaned.slice(jsonStart) : cleaned;
   try {
-    return JSON.parse(cleaned);
+    return JSON.parse(jsonStr);
   } catch (e) {
     throw new Error("Model didn't return valid JSON: " + (cleaned.slice(0, 200) || "(empty response)"));
   }
