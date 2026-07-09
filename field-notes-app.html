@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v21";
+var APP_VERSION = "v22";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v22 2026-07-09  Capture tab: batch queue — add notebooks 2-at-a-time, process all in sequence
 v21 2026-07-09  Fix false save banner: only setSaveError on thrown exceptions, not unreadable no-cors return value
 v20 2026-07-09  Fix Sheets writes: switch postToSheet to no-cors fire-and-forget (Apps Script redirect was blocking response, causing false save failures)
 v19 2026-07-09  Fix JSON parse: strip prose preamble before { to handle model narration before JSON output
@@ -868,6 +869,8 @@ function App() {
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [identifying, setIdentifying] = useState(false);
   const [captureError, setCaptureError] = useState(null);
+  const [captureQueue, setCaptureQueue] = useState([]);
+  const [processingIndex, setProcessingIndex] = useState(null);
   const identifyElapsed = useElapsedSeconds(identifying);
   const pricingElapsed = useElapsedSeconds(pricingLoading !== null);
   const [saveCount, setSaveCount] = useState(0);
@@ -1086,7 +1089,7 @@ function App() {
     setCaptureError(null);
     try {
       const prepared = await Promise.all(files.map(prepareImage));
-      setPendingPhotos((prev) => [...prev, ...prepared].slice(0, 4));
+      setPendingPhotos((prev) => [...prev, ...prepared].slice(0, 2));
     } catch (err) {
       setCaptureError("Couldn't read one of those photos \u2014 try again.");
     }
@@ -1095,14 +1098,12 @@ function App() {
   function removePendingPhoto(idx) {
     setPendingPhotos((prev) => prev.filter((_, i) => i !== idx));
   }
-  async function runIdentify() {
-    if (pendingPhotos.length === 0) return;
+  async function runIdentifyPhotos(photos) {
     setIdentifying(true);
-    setCaptureError(null);
     let ai = null;
     let errorDetail = null;
     try {
-      ai = await identifyNotebook(pendingPhotos.map((p) => p.apiImage));
+      ai = await identifyNotebook(photos.map((p) => p.apiImage));
     } catch (err) {
       ai = null;
       errorDetail = err?.message || String(err);
@@ -1113,7 +1114,7 @@ function App() {
     const newEntry = {
       ...EMPTY_ENTRY,
       id: newEntryId,
-      photo: pendingPhotos[0].thumb,
+      photo: photos[0].thumb,
       photoFiles: [],
       editionId: matchedEdition ? matchedEdition.id : "",
       verified: false,
@@ -1138,16 +1139,33 @@ function App() {
     };
     persistInventory((prev) => [...prev, newEntry]);
     const nextInventory = [...inventory, newEntry];
-    downloadFullResPhotos(newEntryId, slug, pendingPhotos.map((p) => p.fullRes)).then((filenames) => {
+    downloadFullResPhotos(newEntryId, slug, photos.map((p) => p.fullRes)).then((filenames) => {
       persistInventory((prev) => prev.map(
         (it) => it.id === newEntryId ? { ...it, photoFiles: filenames } : it
       ));
     });
-
     recordSave(nextInventory, editions);
-    setPendingPhotos([]);
     setIdentifying(false);
-    if (!ai) setCaptureError(`Identification failed: ${errorDetail || "unknown error"}. The photo and entry were still saved \u2014 check its notes, or review it manually.`);
+    if (!ai) setCaptureError(`Identification failed: ${errorDetail || "unknown error"}. Entry saved \u2014 review manually.`);
+  }
+  function addToQueue() {
+    if (pendingPhotos.length === 0) return;
+    setCaptureQueue((prev) => [...prev, { id: uid(), photos: pendingPhotos }]);
+    setPendingPhotos([]);
+    setCaptureError(null);
+  }
+  function removeFromQueue(idx) {
+    setCaptureQueue((prev) => prev.filter((_, i) => i !== idx));
+  }
+  async function runBatch() {
+    if (captureQueue.length === 0 || processingIndex !== null) return;
+    const queueSnapshot = [...captureQueue];
+    for (let i = 0; i < queueSnapshot.length; i++) {
+      setProcessingIndex(i);
+      await runIdentifyPhotos(queueSnapshot[i].photos);
+    }
+    setCaptureQueue([]);
+    setProcessingIndex(null);
   }
   function startEdit(item) {
     setEntry(item);
@@ -1319,35 +1337,31 @@ function App() {
     ] }),
     /* @__PURE__ */ jsxs("div", { className: "px-4 py-4 max-w-md mx-auto", children: [
       tab === "capture" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
-        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500", children: 'Add 1\u20133 photos of one notebook \u2014 cover and the colophon/back page work best \u2014 then identify it. Repeat per notebook; each one lands in Inventory marked "AI draft" until you confirm it.' }),
-        /* @__PURE__ */ jsxs("label", { className: "fn-card rounded flex flex-col items-center justify-center gap-2 p-4 cursor-pointer", children: [
+        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-500", children: "Add 2 photos per notebook \u2014 cover and colophon work best. Queue multiple notebooks, then identify all at once." }),
+        /* @__PURE__ */ jsxs("label", { className: `fn-card rounded flex flex-col items-center justify-center gap-2 p-4 ${processingIndex !== null ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`, children: [
           /* @__PURE__ */ jsx(Camera, { size: 24 }),
-          /* @__PURE__ */ jsx("span", { className: "text-xs text-stone-500", children: "Add photo(s) for this notebook" }),
-          /* @__PURE__ */ jsx("input", { type: "file", accept: "image/*", multiple: true, className: "hidden", onChange: handleCapturePhotos })
+          /* @__PURE__ */ jsx("span", { className: "text-xs text-stone-500", children: pendingPhotos.length > 0 ? `${pendingPhotos.length}/2 \u2014 add more or queue` : "Add photos for next notebook" }),
+          /* @__PURE__ */ jsx("input", { type: "file", accept: "image/*", multiple: true, className: "hidden", disabled: processingIndex !== null, onChange: handleCapturePhotos })
         ] }),
         pendingPhotos.length > 0 && /* @__PURE__ */ jsx("div", { className: "flex gap-2 flex-wrap", children: pendingPhotos.map((p, i) => /* @__PURE__ */ jsxs("div", { className: "relative", children: [
           /* @__PURE__ */ jsx("img", { src: p.thumb, alt: "", className: "w-16 h-16 object-cover rounded fn-card" }),
-          /* @__PURE__ */ jsx(
-            "button",
-            {
-              onClick: () => removePendingPhoto(i),
-              "aria-label": "Remove photo",
-              className: "absolute -top-1.5 -right-1.5 bg-stone-800 text-white rounded-full p-0.5",
-              children: /* @__PURE__ */ jsx(X, { size: 10 })
-            }
-          )
+          /* @__PURE__ */ jsx("button", { onClick: () => removePendingPhoto(i), "aria-label": "Remove photo", className: "absolute -top-1.5 -right-1.5 bg-stone-800 text-white rounded-full p-0.5", children: /* @__PURE__ */ jsx(X, { size: 10 }) })
         ] }, i)) }),
+        /* @__PURE__ */ jsxs("button", { onClick: addToQueue, disabled: pendingPhotos.length === 0 || processingIndex !== null, className: "fn-btn-ghost rounded px-4 py-2 text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2", children: [
+          /* @__PURE__ */ jsx(Plus, { size: 14 }),
+          "Add to queue"
+        ] }),
+        captureQueue.length > 0 && /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsxs("div", { className: "text-xs uppercase tracking-wide text-stone-500", children: ["Queue \u2014 ", captureQueue.length, captureQueue.length !== 1 ? " notebooks" : " notebook"] }),
+          captureQueue.map((item, i) => /* @__PURE__ */ jsxs("div", { className: `flex items-center gap-2 rounded px-2 py-1.5 ${processingIndex === i ? "bg-amber-50 border border-amber-200" : "bg-stone-50"}`, children: [
+            /* @__PURE__ */ jsxs("span", { className: "text-xs text-stone-400 w-5 shrink-0", children: ["#", i + 1] }),
+            /* @__PURE__ */ jsx("div", { className: "flex gap-1 flex-1", children: item.photos.map((p, j) => /* @__PURE__ */ jsx("img", { src: p.thumb, alt: "", className: "w-8 h-8 object-cover rounded" }, j)) }),
+            processingIndex === i ? /* @__PURE__ */ jsxs("span", { className: "text-xs text-amber-700 shrink-0", children: [identifyElapsed, "s"] }) : /* @__PURE__ */ jsx("button", { onClick: () => removeFromQueue(i), "aria-label": "Remove", className: "text-stone-400 shrink-0", children: /* @__PURE__ */ jsx(X, { size: 12 }) })
+          ] }, item.id)),
+          /* @__PURE__ */ jsx("button", { onClick: runBatch, disabled: processingIndex !== null, className: "fn-btn-primary rounded px-4 py-2 text-sm font-medium disabled:opacity-40", children: processingIndex !== null ? `Identifying ${processingIndex + 1} of ${captureQueue.length}\u2026 (${identifyElapsed}s)` : `Identify all ${captureQueue.length}` })
+        ] }),
         captureError && /* @__PURE__ */ jsx("div", { className: "text-xs text-red-600", children: captureError }),
-        /* @__PURE__ */ jsx(
-          "button",
-          {
-            onClick: runIdentify,
-            disabled: pendingPhotos.length === 0 || identifying,
-            className: "fn-btn-primary rounded px-4 py-2 text-sm font-medium disabled:opacity-40",
-            children: identifying ? `Identifying\u2026 (${identifyElapsed}s)` : "Identify with AI"
-          }
-        ),
-        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400", children: needsReviewCount > 0 ? `${needsReviewCount} entr${needsReviewCount === 1 ? "y" : "ies"} waiting in the review queue \u2014 check Inventory.` : "Review queue is empty." })
+        /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400", children: needsReviewCount > 0 ? `${needsReviewCount} entr${needsReviewCount === 1 ? "y" : "ies"} waiting in review \u2014 check Inventory.` : "Review queue is empty." })
       ] }),
       tab === "intake" && /* @__PURE__ */ jsxs("div", { className: "fn-fade flex flex-col gap-3", children: [
         entry.id && /* @__PURE__ */ jsx("div", { className: "text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1.5", children: "Editing an existing entry." }),
