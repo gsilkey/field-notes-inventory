@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v26";
+var APP_VERSION = "v27";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v27 2026-07-23  Fix "none corner wear" display → "No corner wear"
 v26 2026-07-09  Revert Re-identify to file picker — requires new photos for reliable text recognition
 v25 2026-07-09  Re-identify uses stored thumbnail directly — no file picker
 v24 2026-07-09  Re-identify button on failed inventory entries — re-supply photos, patches entry in place
@@ -1940,7 +1941,7 @@ function App() {
               /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-500 mt-1", children: [
                 item.coverCondition,
                 " cover \xB7 ",
-                item.cornerWear.toLowerCase(),
+                item.cornerWear === "None" ? "No" : item.cornerWear.toLowerCase(),
                 " corner wear",
                 (() => {
                   const vstats = priceStats(item.priceObservations);
