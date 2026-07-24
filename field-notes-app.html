@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v27";
+var APP_VERSION = "v28";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v28 2026-07-24  Return to origin tab on save/cancel; JSON parse strip trailing text after last }
 v27 2026-07-23  Fix "none corner wear" display → "No corner wear"
 v26 2026-07-09  Revert Re-identify to file picker — requires new photos for reliable text recognition
 v25 2026-07-09  Re-identify uses stored thumbnail directly — no file picker
@@ -656,7 +657,8 @@ async function callClaudeJSON(content, maxTokens, maxSearchUses = 4) {
   const text = textBlocks.length ? textBlocks[textBlocks.length - 1].text : "";
   const cleaned = text.replace(/```json|```/g, "").trim();
   const jsonStart = cleaned.indexOf("{");
-  const jsonStr = jsonStart > 0 ? cleaned.slice(jsonStart) : cleaned;
+  const jsonEnd = cleaned.lastIndexOf("}");
+  const jsonStr = jsonStart >= 0 && jsonEnd > jsonStart ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned;
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
@@ -852,6 +854,7 @@ function App() {
   const [editions, setEditions] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [tab, setTab] = useState("intake");
+  const [editOriginTab, setEditOriginTab] = useState("inventory");
   const [saveError, setSaveError] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [showSettings, setShowSettings] = useState(!getApiKey());
@@ -1087,7 +1090,7 @@ function App() {
 
     recordSave(nextInventory, editions);
     resetEntryForm();
-    setTab("inventory");
+    setTab(isNew ? "inventory" : editOriginTab);
   }
   async function handleCapturePhotos(e) {
     const files = Array.from(e.target.files || []);
@@ -1225,6 +1228,7 @@ function App() {
     setReIdentifyLoading(null);
   }
   function startEdit(item) {
+    setEditOriginTab(tab);
     setEntry(item);
     const restored = item.photo ? [item.photo] : [];
     setEntryPhotos(restored.map((src) => ({ display: src, fullRes: null })));
@@ -1794,7 +1798,7 @@ function App() {
           }
         ) }),
         /* @__PURE__ */ jsxs("div", { className: "flex gap-2 justify-end pt-1", children: [
-          entry.id && /* @__PURE__ */ jsx("button", { onClick: resetEntryForm, className: "fn-btn-ghost rounded px-3 py-2 text-sm", children: "Cancel edit" }),
+          entry.id && /* @__PURE__ */ jsx("button", { onClick: () => { resetEntryForm(); setTab(editOriginTab); }, className: "fn-btn-ghost rounded px-3 py-2 text-sm", children: "Cancel edit" }),
           /* @__PURE__ */ jsxs("button", { onClick: saveEntry, className: "fn-btn-primary rounded px-4 py-2 text-sm font-medium flex items-center gap-1.5", children: [
             /* @__PURE__ */ jsx(Check, { size: 16 }),
             " ",
