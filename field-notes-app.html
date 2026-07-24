@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v30";
+var APP_VERSION = "v31";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v31 2026-07-24  Pricing: max_uses 5→3; aggressive snippet extraction; background indicator in header; non-blocking UI
 v30 2026-07-24  Fix price observations wiped on Update entry — pull from live inventory state not stale entry
 v29 2026-07-24  Pricing: sealed=3-pack in condition summary; exclude 5-pack comps from prompt
 v28 2026-07-24  Return to origin tab on save/cancel; JSON parse strip trailing text after last }
@@ -689,9 +690,9 @@ IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack (thr
 
 The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Condition materially changes value \u2014 when you search, prefer comparables that roughly match this condition, and in each observation's "note" field say whether that comp's condition looks similar, better, or worse than this copy.
 
-Use web search. You have at most 5 searches available, so prioritize: check eBay first (active listings and any sold/completed listings with a final price), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
+You have at most 3 searches available, so prioritize: check eBay first (active listings and sold/completed listings), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
 
-For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
+Extract prices from whatever is visible in search results \u2014 eBay snippets, page titles, listing descriptions, community posts. If a price figure appears anywhere in the result, record it. Only drop a listing if no price figure appears at all. For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
 {
   "observations": [
     {
@@ -705,10 +706,10 @@ For each distinct, real price data point you find, record it. Your FINAL message
   ],
   "searchSummary": string (1-2 sentences: what you found, and which sources you actually checked)
 }
-Only include observations backed by a real source you can point to. If you find nothing concrete, return an empty observations array and say why in searchSummary rather than inventing a number. If a specific listing's price isn't clearly stated in what you found, drop that one listing and move on to the next \u2014 do not explain the difficulty in your response, just exclude it and finish with whatever you could confirm.`;
+Only include observations backed by a real source you can point to. If you find nothing concrete, return an empty observations array and say why in searchSummary rather than inventing a number.`;
 }
 async function lookupPricing(name, seasonYear, code, conditionSummary) {
-  return callClaudeJSON(buildPricePrompt(name, seasonYear, code, conditionSummary), 4096, 5);
+  return callClaudeJSON(buildPricePrompt(name, seasonYear, code, conditionSummary), 4096, 3);
 }
 var SHEETS_URL = "https://script.google.com/macros/s/AKfycbzSFiv90xUYkMfITgL_tGbeeBxptpTahQ0ovEsVUFTU26PjvM2EY55pqKeqF04dhi-H2w/exec";
 async function fetchTab(tab) {
@@ -1333,23 +1334,17 @@ function App() {
           ] })
         ] })
       ] }),
-      /* @__PURE__ */ jsxs("div", { className: "flex gap-3 mt-3 text-xs font-medium flex-wrap", children: [
-        /* @__PURE__ */ jsxs("span", { children: [
-          counts.total,
-          " CATALOGUED"
-        ] }),
-        /* @__PURE__ */ jsxs("span", { children: [
-          counts.inStock,
-          " IN STOCK"
-        ] }),
-        /* @__PURE__ */ jsxs("span", { children: [
-          counts.listed,
-          " LISTED"
-        ] }),
-        /* @__PURE__ */ jsxs("span", { children: [
-          counts.sold,
-          " SOLD"
-        ] })
+      /* @__PURE__ */ jsxs("div", { className: "flex gap-3 mt-3 text-xs font-medium flex-wrap items-center", children: [
+        /* @__PURE__ */ jsxs("span", { children: [counts.total, " CATALOGUED"] }),
+        /* @__PURE__ */ jsxs("span", { children: [counts.inStock, " IN STOCK"] }),
+        /* @__PURE__ */ jsxs("span", { children: [counts.listed, " LISTED"] }),
+        /* @__PURE__ */ jsxs("span", { children: [counts.sold, " SOLD"] }),
+        pricingLoading !== null && /* @__PURE__ */ jsxs("span", { className: "opacity-70", children: ["\u00b7 PRICING\u2026 (", pricingElapsed, "s)"] }),
+        pricingLoading === null && Object.keys(pendingResults).length > 0 && /* @__PURE__ */ jsx("button", {
+          onClick: () => { const id = Object.keys(pendingResults)[0]; const it = inventory.find((i) => i.id === id); if (it) startEdit(it); },
+          className: "underline opacity-90",
+          children: "\u00b7 PRICING READY \u2192"
+        })
       ] })
     ] }),
     showSettings && /* @__PURE__ */ jsxs("div", { className: "px-4 py-3 bg-stone-100 border-b border-stone-300 text-xs space-y-2", children: [
@@ -1590,7 +1585,7 @@ function App() {
                   children: [
                     /* @__PURE__ */ jsx(RefreshCw, { size: 12 }),
                     " ",
-                    pricingLoading === entry.id ? `Searching\u2026 (${pricingElapsed}s)` : "Refresh pricing"
+                    pricingLoading === entry.id ? `Running in background\u2026 (${pricingElapsed}s)` : "Refresh pricing"
                   ]
                 }
               )
