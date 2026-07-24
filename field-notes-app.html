@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v29";
+var APP_VERSION = "v30";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v30 2026-07-24  Fix price observations wiped on Update entry — pull from live inventory state not stale entry
 v29 2026-07-24  Pricing: sealed=3-pack in condition summary; exclude 5-pack comps from prompt
 v28 2026-07-24  Return to origin tab on save/cancel; JSON parse strip trailing text after last }
 v27 2026-07-23  Fix "none corner wear" display → "No corner wear"
@@ -1079,7 +1080,8 @@ function App() {
       id,
       verified: true,
       photo: entryPhotos[0]?.display || null,
-      photoFiles: entry.photoFiles || []
+      photoFiles: entry.photoFiles || [],
+      priceObservations: isNew ? (entry.priceObservations || []) : (inventory.find((it) => it.id === id)?.priceObservations || entry.priceObservations || [])
     };
     const nextInventory = entry.id ? inventory.map((it) => it.id === id ? { ...finalized, dateUpdated: (/* @__PURE__ */ new Date()).toISOString() } : it) : [...inventory, { ...finalized, dateAdded: (/* @__PURE__ */ new Date()).toISOString() }];
     persistInventory(nextInventory);
