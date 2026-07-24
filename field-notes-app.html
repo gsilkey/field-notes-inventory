@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v28";
+var APP_VERSION = "v29";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v29 2026-07-24  Pricing: sealed=3-pack in condition summary; exclude 5-pack comps from prompt
 v28 2026-07-24  Return to origin tab on save/cancel; JSON parse strip trailing text after last }
 v27 2026-07-23  Fix "none corner wear" display → "No corner wear"
 v26 2026-07-09  Revert Re-identify to file picker — requires new photos for reliable text recognition
@@ -676,12 +677,14 @@ async function identifyNotebook(images) {
   return callClaudeJSON(content, 4096, 2);
 }
 function describeCondition(item) {
-  const parts = [item.completeness, `${item.coverCondition} cover`, `${item.cornerWear} corner wear`];
+  const parts = [item.completeness === "Sealed" ? "Sealed original 3-pack" : item.completeness, `${item.coverCondition} cover`, `${item.cornerWear} corner wear`];
   if (item.bellyBand && item.bellyBand !== "N/A") parts.push(`belly band ${item.bellyBand.toLowerCase()}`);
   return parts.filter(Boolean).join(", ");
 }
 function buildPricePrompt(name, seasonYear, code, conditionSummary) {
   return `Research the current and recent secondhand resale value of the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
+
+IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack (three notebooks). The item being priced is a sealed original 3-pack unless the condition below says otherwise. Do NOT use 5-pack listings as comps \u2014 5-packs are rare collector variants (e.g. FNC-55 Great Lakes 5-pack) that command a significant premium over the standard 3-pack and are a different product. Only use 5-pack comps if the item being priced is explicitly a 5-pack.
 
 The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Condition materially changes value \u2014 when you search, prefer comparables that roughly match this condition, and in each observation's "note" field say whether that comp's condition looks similar, better, or worse than this copy.
 
