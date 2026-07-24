@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v34";
+var APP_VERSION = "v35";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v35 2026-07-24  Inventory card: avg price as teal badge in top-right corner
 v34 2026-07-24  Pricing prompt: front-load JSON-only constraint to stop model narrating instead of outputting JSON
 v33 2026-07-24  Pricing panel reads live inventory observations — Log observation and Save to log update display immediately
 v32 2026-07-24  Pricing prompt: start with short simple queries, no item codes in initial search
@@ -1320,6 +1321,7 @@ function App() {
         .fn-badge-listed { background:#FCEFD8; color:#8A5A12; }
         .fn-badge-sold { background:#E9E4DC; color:#6B6359; }
         .fn-badge-draft { background:#EFE1F5; color:#7A3F9E; }
+        .fn-badge-price { background:#D6EAF0; color:#1A5E73; }
         .fn-add-tile { border:2px dashed #C9BFA0; background:transparent; }
         .fn-add-tile:hover { background:#EFE8D6; }
         @media (prefers-reduced-motion: no-preference) { .fn-fade { animation: fnFade .16s ease-out; } }
@@ -1947,7 +1949,8 @@ function App() {
                 ] }),
                 /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-end gap-1 shrink-0", children: [
                   /* @__PURE__ */ jsx("span", { className: `fn-badge ${badgeClass}`, children: item.status }),
-                  !item.verified && /* @__PURE__ */ jsx("span", { className: "fn-badge fn-badge-draft", children: "AI draft" })
+                  !item.verified && /* @__PURE__ */ jsx("span", { className: "fn-badge fn-badge-draft", children: "AI draft" }),
+                  (() => { const ps = priceStats(item.priceObservations); return ps ? /* @__PURE__ */ jsxs("span", { className: "fn-badge fn-badge-price", children: ["avg $", Math.round(ps.avg)] }) : null; })()
                 ] })
               ] }),
               /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-500 mt-1", children: [
@@ -1957,7 +1960,7 @@ function App() {
                 " corner wear",
                 (() => {
                   const vstats = priceStats(item.priceObservations);
-                  return vstats ? ` \xB7 avg $${Math.round(vstats.avg)}` : "";
+                  return vstats ? `` : "";
                 })()
               ] }),
               !item.verified && (item.aiConditionNotes || item.aiConfidence) && /* @__PURE__ */ jsxs("div", { className: "text-xs text-purple-700 mt-1 italic", children: [
