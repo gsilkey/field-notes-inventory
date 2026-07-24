@@ -373,10 +373,12 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v32";
+var APP_VERSION = "v34";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v34 2026-07-24  Pricing prompt: front-load JSON-only constraint to stop model narrating instead of outputting JSON
+v33 2026-07-24  Pricing panel reads live inventory observations — Log observation and Save to log update display immediately
 v32 2026-07-24  Pricing prompt: start with short simple queries, no item codes in initial search
 v31 2026-07-24  Pricing: max_uses 5→3; aggressive snippet extraction; background indicator in header; non-blocking UI
 v30 2026-07-24  Fix price observations wiped on Update entry — pull from live inventory state not stale entry
@@ -685,7 +687,9 @@ function describeCondition(item) {
   return parts.filter(Boolean).join(", ");
 }
 function buildPricePrompt(name, seasonYear, code, conditionSummary) {
-  return `Research the current and recent secondhand resale value of the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
+  return `YOUR RESPONSE MUST BE A SINGLE RAW JSON OBJECT STARTING WITH { — NO PREAMBLE, NO EXPLANATION, NO MARKDOWN. Begin with { immediately and end with }. Do all research first, then output only the JSON.
+
+Research the current and recent secondhand resale value of the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
 
 IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack (three notebooks). The item being priced is a sealed original 3-pack unless the condition below says otherwise. Do NOT use 5-pack listings as comps \u2014 5-packs are rare collector variants (e.g. FNC-55 Great Lakes 5-pack) that command a significant premium over the standard 3-pack and are a different product. Only use 5-pack comps if the item being priced is explicitly a 5-pack.
 
@@ -1575,7 +1579,8 @@ function App() {
           ) })
         ] }),
         entry.id && (() => {
-          const stats = priceStats(entry.priceObservations);
+          const liveObs = (inventory.find((it) => it.id === entry.id)?.priceObservations) || entry.priceObservations || [];
+          const stats = priceStats(liveObs);
           return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
               /* @__PURE__ */ jsx("span", { className: "text-xs uppercase tracking-wide text-stone-500", children: "Value (this copy)" }),
@@ -1632,7 +1637,7 @@ function App() {
                 )
               ] })
             ] }),
-            (entry.priceObservations || []).slice().reverse().map((o) => /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2 text-xs bg-stone-50 rounded px-2 py-1.5", children: [
+            (liveObs).slice().reverse().map((o) => /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2 text-xs bg-stone-50 rounded px-2 py-1.5", children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 /* @__PURE__ */ jsxs("span", { className: "font-semibold", children: [
                   "$",
