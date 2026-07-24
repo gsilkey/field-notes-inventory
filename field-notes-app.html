@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v31";
+var APP_VERSION = "v32";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v32 2026-07-24  Pricing prompt: start with short simple queries, no item codes in initial search
 v31 2026-07-24  Pricing: max_uses 5→3; aggressive snippet extraction; background indicator in header; non-blocking UI
 v30 2026-07-24  Fix price observations wiped on Update entry — pull from live inventory state not stale entry
 v29 2026-07-24  Pricing: sealed=3-pack in condition summary; exclude 5-pack comps from prompt
@@ -691,6 +692,8 @@ IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack (thr
 The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Condition materially changes value \u2014 when you search, prefer comparables that roughly match this condition, and in each observation's "note" field say whether that comp's condition looks similar, better, or worse than this copy.
 
 You have at most 3 searches available, so prioritize: check eBay first (active listings and sold/completed listings), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
+
+SEARCH STRATEGY: Always start with short, simple queries \u2014 e.g. "field notes [edition name] ebay" or "field notes [edition name] sold". Do NOT include item codes, sub-series names, or detailed descriptions in the initial query. Only narrow your search if the broad query returns too many unrelated results. Simple queries match more listing titles and are far more likely to surface real comps.
 
 Extract prices from whatever is visible in search results \u2014 eBay snippets, page titles, listing descriptions, community posts. If a price figure appears anywhere in the result, record it. Only drop a listing if no price figure appears at all. For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
 {
