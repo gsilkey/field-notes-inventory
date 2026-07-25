@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v37";
+var APP_VERSION = "v38";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v38 2026-07-24  Pricing prompt: add current year to query for recent results; hard-exclude retail when secondary data exists
 v37 2026-07-24  Pricing prompt: always search with "sold"; deprioritize retail; retry if first result is retail-only
 v36 2026-07-24  Clear pricingError on startEdit — stop search summary bleeding into next item
 v35 2026-07-24  Inventory card: avg price as teal badge in top-right corner
@@ -700,7 +701,7 @@ The specific copy being priced is in this condition: ${conditionSummary || "unkn
 
 You have at most 3 searches available, so prioritize: check eBay first (active listings and sold/completed listings), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
 
-SEARCH STRATEGY: Your first search must always include "sold" to surface completed eBay transactions \u2014 e.g. "field notes [edition name] ebay sold" or "field notes [edition name] sold 3-pack". Do NOT include item codes or sub-series names in the initial query. If the first search returns only retail/authorized reseller results (Pen Boutique, jetpens, gouletpens, fieldnotesbrand.com, etc.) with no secondary market sales, immediately retry with "sold" or "completed" appended. Retail and MSRP prices are the floor, not comps \u2014 only record a retail price if you find zero secondary market data after all searches.
+SEARCH STRATEGY: Your first search must always include "sold" and the current year to surface recent completed eBay transactions \u2014 e.g. "field notes [edition name] ebay sold 2026" or "field notes [edition name] sold 3-pack 2026". Do NOT include item codes or sub-series names in the initial query. If the first search returns only retail/authorized reseller results (Pen Boutique, jetpens, gouletpens, fieldnotesbrand.com, etc.) with no secondary market sales, immediately retry with different phrasing. RETAIL EXCLUSION: Never include retail or authorized reseller prices in observations if you have found any secondary market (eBay sold, Reddit, Etsy) data at all \u2014 retail prices are the floor, not comps, and pollute the average. Only record a retail price if you find zero secondary market data after all searches.
 
 Extract prices from whatever is visible in search results \u2014 eBay snippets, page titles, listing descriptions, community posts. If a price figure appears anywhere in the result, record it. Only drop a listing if no price figure appears at all. For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
 {
