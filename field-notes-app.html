@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v38";
+var APP_VERSION = "v39";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v39 2026-07-24  Pending review: priceStats excludes pending; amber badge on card; approve/reject in intake panel
 v38 2026-07-24  Pricing prompt: add current year to query for recent results; hard-exclude retail when secondary data exists
 v37 2026-07-24  Pricing prompt: always search with "sold"; deprioritize retail; retry if first result is retail-only
 v36 2026-07-24  Clear pricingError on startEdit — stop search summary bleeding into next item
@@ -434,7 +435,7 @@ var EMPTY_ENTRY = {
 };
 var EMPTY_EDITION = { id: null, name: "", seasonYear: "", editionNumber: "", notes: "", source: "" };
 function priceStats(observations) {
-  const prices = (observations || []).map((o) => o.price).filter((p) => typeof p === "number" && !isNaN(p));
+  const prices = (observations || []).filter((o) => !o.pendingReview).map((o) => o.price).filter((p) => typeof p === "number" && !isNaN(p));
   if (!prices.length) return null;
   return {
     max: Math.max(...prices),
@@ -1042,6 +1043,16 @@ function App() {
       (it) => it.id === itemId ? { ...it, priceObservations: (it.priceObservations || []).filter((o) => o.id !== obsId) } : it
     ));
   }
+  function approvePriceObservation(itemId, obsId) {
+    persistInventory((prev) => prev.map(
+      (it) => it.id === itemId ? { ...it, priceObservations: (it.priceObservations || []).map((o) => o.id === obsId ? { ...o, pendingReview: false } : o) } : it
+    ));
+  }
+  function rejectPriceObservation(itemId, obsId) {
+    persistInventory((prev) => prev.map(
+      (it) => it.id === itemId ? { ...it, priceObservations: (it.priceObservations || []).filter((o) => o.id !== obsId) } : it
+    ));
+  }
   function commitPendingResults(itemId) {
     const found = pendingResults[itemId];
     if (!found || !found.length) return;
@@ -1326,6 +1337,7 @@ function App() {
         .fn-badge-sold { background:#E9E4DC; color:#6B6359; }
         .fn-badge-draft { background:#EFE1F5; color:#7A3F9E; }
         .fn-badge-price { background:#D6EAF0; color:#1A5E73; }
+        .fn-badge-pending { background:#FEF3C7; color:#92400E; }
         .fn-add-tile { border:2px dashed #C9BFA0; background:transparent; }
         .fn-add-tile:hover { background:#EFE8D6; }
         @media (prefers-reduced-motion: no-preference) { .fn-fade { animation: fnFade .16s ease-out; } }
@@ -1586,6 +1598,8 @@ function App() {
         ] }),
         entry.id && (() => {
           const liveObs = (inventory.find((it) => it.id === entry.id)?.priceObservations) || entry.priceObservations || [];
+          const pendingObs = liveObs.filter((o) => o.pendingReview);
+          const confirmedObs = liveObs.filter((o) => !o.pendingReview);
           const stats = priceStats(liveObs);
           return /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
@@ -1643,7 +1657,19 @@ function App() {
                 )
               ] })
             ] }),
-            (liveObs).slice().reverse().map((o) => /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2 text-xs bg-stone-50 rounded px-2 py-1.5", children: [
+            pendingObs.length > 0 && /* @__PURE__ */ jsxs("div", { className: "rounded p-2 flex flex-col gap-1.5", style: { background: "#FEF3C7", border: "1px solid #FCD34D" }, children: [
+              /* @__PURE__ */ jsxs("div", { className: "text-xs font-medium", style: { color: "#92400E" }, children: [pendingObs.length, " pending review \u2014 from Cowork pricing"] }),
+              pendingObs.map((o) => /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-700 flex flex-col gap-1", children: [
+                /* @__PURE__ */ jsxs("div", { children: [/* @__PURE__ */ jsxs("span", { className: "font-semibold", children: ["$", o.price] }), " \u00b7 ", o.type, o.date ? ` \u00b7 ${o.date}` : "", " \u00b7 ", o.source] }),
+                o.note && /* @__PURE__ */ jsx("div", { className: "text-stone-500", children: o.note }),
+                o.sourceUrl && /* @__PURE__ */ jsxs("a", { href: o.sourceUrl, target: "_blank", rel: "noopener noreferrer", className: "text-stone-500 inline-flex items-center gap-0.5 underline", children: ["source ", /* @__PURE__ */ jsx(ExternalLink, { size: 10 })] }),
+                /* @__PURE__ */ jsxs("div", { className: "flex gap-2 mt-0.5", children: [
+                  /* @__PURE__ */ jsx("button", { onClick: () => approvePriceObservation(entry.id, o.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Approve" }),
+                  /* @__PURE__ */ jsx("button", { onClick: () => rejectPriceObservation(entry.id, o.id), className: "fn-btn-ghost rounded px-2 py-1 text-xs", children: "Reject" })
+                ] })
+              ] }, o.id))
+            ] }),
+            (confirmedObs).slice().reverse().map((o) => /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2 text-xs bg-stone-50 rounded px-2 py-1.5", children: [
               /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
                 /* @__PURE__ */ jsxs("span", { className: "font-semibold", children: [
                   "$",
@@ -1954,7 +1980,8 @@ function App() {
                 /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-end gap-1 shrink-0", children: [
                   /* @__PURE__ */ jsx("span", { className: `fn-badge ${badgeClass}`, children: item.status }),
                   !item.verified && /* @__PURE__ */ jsx("span", { className: "fn-badge fn-badge-draft", children: "AI draft" }),
-                  (() => { const ps = priceStats(item.priceObservations); return ps ? /* @__PURE__ */ jsxs("span", { className: "fn-badge fn-badge-price", children: ["avg $", Math.round(ps.avg)] }) : null; })()
+                  (() => { const ps = priceStats(item.priceObservations); return ps ? /* @__PURE__ */ jsxs("span", { className: "fn-badge fn-badge-price", children: ["avg $", Math.round(ps.avg)] }) : null; })(),
+                  (() => { const n = (item.priceObservations || []).filter((o) => o.pendingReview).length; return n > 0 ? /* @__PURE__ */ jsxs("button", { onClick: () => startEdit(item), className: "fn-badge fn-badge-pending", children: [n, " pending"] }) : null; })()
                 ] })
               ] }),
               /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-500 mt-1", children: [
