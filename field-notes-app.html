@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v40";
+var APP_VERSION = "v41";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v41 2026-07-24  Migration button in Settings; edition pricing summary in Editions tab
 v40 2026-07-24  Edition-level pricing: priceObservations on editions, condition-filtered stats, approve once applies to all copies, legacy item obs preserved
 v39 2026-07-24  Pending review: priceStats excludes pending; amber badge on card; approve/reject in intake panel
 v38 2026-07-24  Pricing prompt: add current year to query for recent results; hard-exclude retail when secondary data exists
@@ -890,6 +891,7 @@ function App() {
   const [saveError, setSaveError] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(getApiKey());
   const [showSettings, setShowSettings] = useState(!getApiKey());
+  const [migrationStatus, setMigrationStatus] = useState(null);
   const [entry, setEntry] = useState(EMPTY_ENTRY);
   const [entryPhotos, setEntryPhotos] = useState([]);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
@@ -1280,6 +1282,30 @@ function App() {
     });
     setReIdentifyLoading(null);
   }
+  function migrateItemPricingToEditions() {
+    const editionUpdates = {};
+    const itemsToClear = [];
+    let movedCount = 0;
+    inventory.forEach((item) => {
+      const obs = item.priceObservations || [];
+      if (!obs.length || !item.editionId) return;
+      const migrated = obs.map((o) => ({ ...o, compCondition: o.compCondition || "Sealed" }));
+      if (!editionUpdates[item.editionId]) editionUpdates[item.editionId] = [];
+      editionUpdates[item.editionId].push(...migrated);
+      itemsToClear.push(item.id);
+      movedCount += migrated.length;
+    });
+    if (!movedCount) { setMigrationStatus("Nothing to migrate."); return; }
+    persistEditions((prev) => prev.map((ed) => {
+      const additions = editionUpdates[ed.id];
+      if (!additions) return ed;
+      return { ...ed, priceObservations: [...(ed.priceObservations || []), ...additions] };
+    }));
+    persistInventory((prev) => prev.map((it) =>
+      itemsToClear.includes(it.id) ? { ...it, priceObservations: [] } : it
+    ));
+    setMigrationStatus(`Done \u2014 ${movedCount} observation${movedCount !== 1 ? "s" : ""} moved to edition records.`);
+  }
   function startEdit(item) {
     setEditOriginTab(tab);
     setPricingError(null);
@@ -1401,27 +1427,13 @@ function App() {
       /* @__PURE__ */ jsx("p", { className: "font-medium", children: "Anthropic API key" }),
       /* @__PURE__ */ jsx("p", { className: "opacity-70", children: "Used directly from this page for notebook ID and pricing lookups. Stored only on this device (localStorage), never sent anywhere but api.anthropic.com." }),
       /* @__PURE__ */ jsxs("div", { className: "flex gap-2", children: [
-        /* @__PURE__ */ jsx(
-          "input",
-          {
-            type: "password",
-            value: apiKeyInput,
-            onChange: (e) => setApiKeyInput(e.target.value),
-            placeholder: "sk-ant-...",
-            className: "fn-input flex-1 text-xs"
-          }
-        ),
-        /* @__PURE__ */ jsx(
-          "button",
-          {
-            onClick: () => {
-              setApiKey(apiKeyInput.trim());
-              setShowSettings(false);
-            },
-            className: "fn-btn-primary px-3 py-1 text-xs",
-            children: "Save"
-          }
-        )
+        /* @__PURE__ */ jsx("input", { type: "password", value: apiKeyInput, onChange: (e) => setApiKeyInput(e.target.value), placeholder: "sk-ant-...", className: "fn-input flex-1 text-xs" }),
+        /* @__PURE__ */ jsx("button", { onClick: () => { setApiKey(apiKeyInput.trim()); setShowSettings(false); }, className: "fn-btn-primary px-3 py-1 text-xs", children: "Save" })
+      ] }),
+      /* @__PURE__ */ jsx("p", { className: "font-medium pt-1", children: "Data" }),
+      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 flex-wrap", children: [
+        /* @__PURE__ */ jsx("button", { onClick: migrateItemPricingToEditions, className: "fn-btn-ghost px-3 py-1 text-xs", children: "Migrate item pricing \u2192 editions" }),
+        migrationStatus && /* @__PURE__ */ jsx("span", { className: "opacity-70", children: migrationStatus })
       ] })
     ] }),
     /* @__PURE__ */ jsx("div", { className: "fn-tabbar flex sticky top-0 z-10", children: TABS.map((t) => /* @__PURE__ */ jsx(
@@ -2016,18 +2028,34 @@ function App() {
                 ]
               }
             ),
-            expanded && /* @__PURE__ */ jsxs("div", { className: "px-3 pb-3 flex items-start justify-between gap-2 pt-2 border-t border-stone-200", children: [
-              /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
-                e.notes && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-600", children: e.notes }),
-                e.source && /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-400 mt-0.5", children: [
-                  "Source: ",
-                  e.source
-                ] })
-              ] }),
-              confirmDeleteId === e.id ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1 shrink-0", children: [
-                /* @__PURE__ */ jsx("button", { onClick: () => deleteEdition(e.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Confirm" }),
-                /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(null), className: "fn-btn-ghost rounded px-2 py-1 text-xs", children: "Cancel" })
-              ] }) : /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(e.id), className: "fn-btn-ghost rounded p-1.5 shrink-0", children: /* @__PURE__ */ jsx(X, { size: 14 }) })
+            expanded && /* @__PURE__ */ jsxs("div", { className: "px-3 pb-3 flex flex-col gap-2 pt-2 border-t border-stone-200", children: [
+              (() => {
+                const obs = e.priceObservations || [];
+                const tiers = ["Sealed", "Mint", "Near Mint", "Light Wear", "Heavy Wear"];
+                const byTier = tiers.map((tier) => {
+                  const ps = priceStats(obs, tier === "Sealed" ? "Sealed" : null, tier === "Sealed" ? null : tier);
+                  return ps ? { tier, ps } : null;
+                }).filter(Boolean);
+                const pending = obs.filter((o) => o.pendingReview).length;
+                const firstItem = inventory.find((it) => it.editionId === e.id);
+                return byTier.length > 0 || pending > 0 ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-0.5", children: [
+                  byTier.map(({ tier, ps }) => /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-600", children: [
+                    /* @__PURE__ */ jsxs("span", { className: "font-medium", children: [tier, ":"] }),
+                    " avg $", Math.round(ps.avg), " \xB7 $", ps.min.toFixed(0), "\u2013$", ps.max.toFixed(0), " \xB7 ", ps.count, " comp", ps.count !== 1 ? "s" : ""
+                  ] }, tier)),
+                  pending > 0 && /* @__PURE__ */ jsxs("button", { onClick: () => firstItem && startEdit(firstItem), className: "text-xs text-amber-700 underline text-left mt-0.5", children: [pending, " pending review"] })
+                ] }) : null;
+              })(),
+              /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between gap-2", children: [
+                /* @__PURE__ */ jsxs("div", { className: "min-w-0", children: [
+                  e.notes && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-600", children: e.notes }),
+                  e.source && /* @__PURE__ */ jsxs("div", { className: "text-xs text-stone-400 mt-0.5", children: ["Source: ", e.source] })
+                ] }),
+                confirmDeleteId === e.id ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1 shrink-0", children: [
+                  /* @__PURE__ */ jsx("button", { onClick: () => deleteEdition(e.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Confirm" }),
+                  /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(null), className: "fn-btn-ghost rounded px-2 py-1 text-xs", children: "Cancel" })
+                ] }) : /* @__PURE__ */ jsx("button", { onClick: () => setConfirmDeleteId(e.id), className: "fn-btn-ghost rounded p-1.5 shrink-0", children: /* @__PURE__ */ jsx(X, { size: 14 }) })
+              ] })
             ] })
           ] }, e.id);
         })
