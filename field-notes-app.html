@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v42";
+var APP_VERSION = "v43";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v43 2026-07-24  Refresh Pricing scoped to asking/mentioned only; sold prices handled by Cowork; prompt rewritten
 v42 2026-07-24  Approve all pending in editions tab and intake panel; avg price on collapsed edition card
 v41 2026-07-24  Migration button in Settings; edition pricing summary in Editions tab
 v40 2026-07-24  Edition-level pricing: priceObservations on editions, condition-filtered stats, approve once applies to all copies, legacy item obs preserved
@@ -710,32 +711,32 @@ function describeCondition(item) {
 function buildPricePrompt(name, seasonYear, code, conditionSummary) {
   return `YOUR RESPONSE MUST BE A SINGLE RAW JSON OBJECT STARTING WITH { — NO PREAMBLE, NO EXPLANATION, NO MARKDOWN. Begin with { immediately and end with }. Do all research first, then output only the JSON.
 
-Research the current and recent secondhand resale value of the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
+SCOPE: This tool finds active asking prices and community-mentioned prices only. Actual sold/completed transaction prices are sourced separately via a dedicated browser workflow — do NOT attempt to find sold listings or completed transactions. Focus exclusively on: active eBay listings, Etsy listings, and Reddit/collector community price mentions.
 
-IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack (three notebooks). The item being priced is a sealed original 3-pack unless the condition below says otherwise. Do NOT use 5-pack listings as comps \u2014 5-packs are rare collector variants (e.g. FNC-55 Great Lakes 5-pack) that command a significant premium over the standard 3-pack and are a different product. Only use 5-pack comps if the item being priced is explicitly a 5-pack.
+Research current asking prices for the Field Notes brand collectible pocket notebook edition "${name}"${seasonYear ? ` (${seasonYear})` : ""}${code ? `, item code ${code}` : ""}.
 
-The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Condition materially changes value \u2014 when you search, prefer comparables that roughly match this condition, and in each observation's "note" field say whether that comp's condition looks similar, better, or worse than this copy.
+IMPORTANT PRODUCT FORMAT: Field Notes standard retail packaging is a 3-pack. The item being priced is a sealed original 3-pack unless the condition below says otherwise. Do NOT use 5-pack listings as comps — 5-packs are rare collector variants that command a significant premium over the standard 3-pack. Only use 5-pack comps if the item being priced is explicitly a 5-pack.
 
-You have at most 3 searches available, so prioritize: check eBay first (active listings and sold/completed listings), since it's the most likely to have real comparables. Only spend remaining searches on Reddit (r/fieldnotes and similar collector discussions) or Etsy if eBay doesn't give you enough. Do not attempt Facebook \u2014 Facebook Marketplace and Groups block search indexing and you will not find anything real there; leave it out rather than inventing a result for it. Likewise, sites that gate their actual price behind a login or paywall (e.g. WorthPoint, eBay Terapeak) won't show you real numbers through search \u2014 don't guess at what's behind that wall. Do all searching and reasoning before your final answer, and do not narrate that reasoning in your response \u2014 go straight to the JSON object.
+The specific copy being priced is in this condition: ${conditionSummary || "unknown condition"}. Note the comp's condition in the "note" field for each observation.
 
-SEARCH STRATEGY: Your first search must always include "sold" and the current year to surface recent completed eBay transactions \u2014 e.g. "field notes [edition name] ebay sold 2026" or "field notes [edition name] sold 3-pack 2026". Do NOT include item codes or sub-series names in the initial query. If the first search returns only retail/authorized reseller results (Pen Boutique, jetpens, gouletpens, fieldnotesbrand.com, etc.) with no secondary market sales, immediately retry with different phrasing. RETAIL EXCLUSION: Never include retail or authorized reseller prices in observations if you have found any secondary market (eBay sold, Reddit, Etsy) data at all \u2014 retail prices are the floor, not comps, and pollute the average. Only record a retail price if you find zero secondary market data after all searches.
+SEARCH STRATEGY: Use simple, short queries including the current year — e.g. "field notes ${name} ebay 2026" or "field notes ${name} 3-pack". Do NOT include "sold" or "completed" in queries — those filter to completed listings which are not accessible via web search. Do NOT include item codes or sub-series names. You have 3 searches. Use search 1 for eBay active listings, search 2 for Reddit/collector communities, search 3 for Etsy if needed. Do not attempt Facebook — it blocks search indexing. Skip paywalled sites (WorthPoint, Terapeak). Do not narrate your reasoning — go straight to the JSON object.
 
-Extract prices from whatever is visible in search results \u2014 eBay snippets, page titles, listing descriptions, community posts. If a price figure appears anywhere in the result, record it. Only drop a listing if no price figure appears at all. For each distinct, real price data point you find, record it. Your FINAL message must contain ONLY a raw JSON object \u2014 no markdown fences, no commentary outside the JSON:
+Extract prices from whatever is visible in search results. If a price figure appears, record it. Only drop a listing if no price figure appears at all.
 {
   "observations": [
     {
       "price": number,
-      "type": "sold" or "asking" or "mentioned",
-      "source": string (site or community name, e.g. "eBay", "Reddit r/fieldnotes", "Etsy"),
+      "type": "asking" or "mentioned",
+      "source": string (e.g. "eBay", "Reddit r/fieldnotes", "Etsy"),
       "sourceUrl": string or null,
-      "date": string or null (date of the sale or post if known, otherwise null),
-      "compCondition": one of "Sealed", "Mint", "Near Mint", "Light Wear", "Heavy Wear" (condition of the listed item),
-      "note": string (brief context, including how this comp's condition compares to the copy described above)
+      "date": string or null,
+      "compCondition": one of "Sealed", "Mint", "Near Mint", "Light Wear", "Heavy Wear",
+      "note": string (brief context and condition comparison)
     }
   ],
-  "searchSummary": string (1-2 sentences: what you found, and which sources you actually checked)
+  "searchSummary": string (1-2 sentences: what you found and which sources you checked)
 }
-Only include observations backed by a real source you can point to. If you find nothing concrete, return an empty observations array and say why in searchSummary rather than inventing a number.`;
+Only include observations backed by a real source. If you find nothing, return an empty observations array and explain in searchSummary.`;
 }
 async function lookupPricing(name, seasonYear, code, conditionSummary) {
   return callClaudeJSON(buildPricePrompt(name, seasonYear, code, conditionSummary), 4096, 3);
