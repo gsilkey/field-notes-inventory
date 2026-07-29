@@ -378,6 +378,7 @@ var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
 v43 2026-07-24  Refresh Pricing scoped to asking/mentioned only; sold prices handled by Cowork; prompt rewritten
+v43 2026-07-24  photoTimestamps stored per item (iCloud Photos matching); download machinery removed; Copy filenames removed
 v42 2026-07-24  Approve all pending in editions tab and intake panel; avg price on collapsed edition card
 v41 2026-07-24  Migration button in Settings; edition pricing summary in Editions tab
 v40 2026-07-24  Edition-level pricing: priceObservations on editions, condition-filtered stats, approve once applies to all copies, legacy item obs preserved
@@ -574,52 +575,18 @@ function resizeImageFile(file, maxDim = 160, quality = 0.5) {
 function coerce(val, options, fallback) {
   return options.includes(val) ? val : fallback;
 }
-function prepareImage(file) {
-  return Promise.all([
+async function prepareImage(file) {
+  const captureTime = new Date(file.lastModified).toISOString();
+  const [thumb, display, apiDataUrl] = await Promise.all([
     resizeImageFile(file, 160, 0.5),
     resizeImageFile(file, 640, 0.7),
-    resizeImageFile(file, 1024, 0.82),
-    resizeImageFile(file, 1600, 0.92)
-  ]).then(([thumb, display, apiDataUrl, fullResDataUrl]) => ({
-    thumb,
-    display,
-    fullRes: fullResDataUrl,
-    apiImage: { mediaType: "image/jpeg", data: apiDataUrl.split(",")[1] }
-  }));
+    resizeImageFile(file, 1024, 0.82)
+  ]);
+  return { thumb, display, captureTime, apiImage: { mediaType: "image/jpeg", data: apiDataUrl.split(",")[1] } };
 }
 function slugify(s) {
   const base = (s || "unidentified").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return base.slice(0, 40) || "unidentified";
-}
-function dataUrlToBlob(dataUrl) {
-  const [header, base64] = dataUrl.split(",");
-  const mimeMatch = header.match(/data:(.*?);base64/);
-  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-function downloadDataUrl(dataUrl, filename) {
-  const blob = dataUrlToBlob(dataUrl);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-async function downloadFullResPhotos(itemId, slug, fullResList) {
-  const filenames = [];
-  for (let i = 0; i < fullResList.length; i++) {
-    const filename = `fn-${slug}-${itemId}-${i + 1}.jpg`;
-    downloadDataUrl(fullResList[i], filename);
-    filenames.push(filename);
-    if (i < fullResList.length - 1) await new Promise((r) => setTimeout(r, 350));
-  }
-  return filenames;
 }
 var IDENTIFY_PROMPT = `You are looking at one or more photos of the same Field Notes brand pocket notebook (a collectible American stationery memo book). Examine the cover, spine, belly band, and any colophon or back-page text that is visible.
 
@@ -909,7 +876,6 @@ function App() {
   const [invSearch, setInvSearch] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [reviewOnly, setReviewOnly] = useState(false);
-  const [copiedId, setCopiedId] = useState(null);
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [identifying, setIdentifying] = useState(false);
   const [captureError, setCaptureError] = useState(null);
@@ -1106,7 +1072,7 @@ function App() {
     if (!files.length) return;
     try {
       const prepared = await Promise.all(files.map(prepareImage));
-      setEntryPhotos((prev) => [...prev, ...prepared.map((p) => ({ display: p.display, fullRes: p.fullRes }))]);
+      setEntryPhotos((prev) => [...prev, ...prepared.map((p) => ({ display: p.display }))]);
     } catch (err) {
     }
     e.target.value = "";
@@ -1124,9 +1090,6 @@ function App() {
   function saveEntry() {
     const isNew = !entry.id;
     const id = entry.id || uid();
-    const ed = editionById[entry.editionId];
-    const newPhotos = entryPhotos.filter((p) => p.fullRes);
-    const slug = slugify(ed ? ed.name : entry.aiProposedName);
     const finalized = {
       ...entry,
       id,
@@ -1137,14 +1100,6 @@ function App() {
     };
     const nextInventory = entry.id ? inventory.map((it) => it.id === id ? { ...finalized, dateUpdated: (/* @__PURE__ */ new Date()).toISOString() } : it) : [...inventory, { ...finalized, dateAdded: (/* @__PURE__ */ new Date()).toISOString() }];
     persistInventory(nextInventory);
-    if (newPhotos.length) {
-      downloadFullResPhotos(id, slug, newPhotos.map((p) => p.fullRes)).then((filenames) => {
-        persistInventory((prev) => prev.map(
-          (it) => it.id === id ? { ...it, photoFiles: [...it.photoFiles || [], ...filenames] } : it
-        ));
-      });
-    }
-
     recordSave(nextInventory, editions);
     resetEntryForm();
     setTab(isNew ? "inventory" : editOriginTab);
@@ -1164,7 +1119,7 @@ function App() {
   function removePendingPhoto(idx) {
     setPendingPhotos((prev) => prev.filter((_, i) => i !== idx));
   }
-  async function runIdentifyPhotos(photos) {
+  async function runIdentifyPhotos(photos, photoTimestamps) {
     setIdentifying(true);
     let ai = null;
     let errorDetail = null;
@@ -1176,12 +1131,12 @@ function App() {
     }
     const matchedEdition = ai && ai.proposedEditionName ? editions.find((e) => e.name.toLowerCase() === ai.proposedEditionName.toLowerCase()) : null;
     const newEntryId = uid();
-    const slug = slugify(matchedEdition ? matchedEdition.name : ai?.proposedEditionName);
     const newEntry = {
       ...EMPTY_ENTRY,
       id: newEntryId,
       photo: photos[0].thumb,
       photoFiles: [],
+      photoTimestamps: photoTimestamps || photos.map((p) => p.captureTime).filter(Boolean),
       editionId: matchedEdition ? matchedEdition.id : "",
       verified: false,
       aiProposedName: ai?.proposedEditionName || null,
@@ -1205,18 +1160,14 @@ function App() {
     };
     persistInventory((prev) => [...prev, newEntry]);
     const nextInventory = [...inventory, newEntry];
-    downloadFullResPhotos(newEntryId, slug, photos.map((p) => p.fullRes)).then((filenames) => {
-      persistInventory((prev) => prev.map(
-        (it) => it.id === newEntryId ? { ...it, photoFiles: filenames } : it
-      ));
-    });
     recordSave(nextInventory, editions);
     setIdentifying(false);
     if (!ai) setCaptureError(`Identification failed: ${errorDetail || "unknown error"}. Entry saved \u2014 review manually.`);
   }
   function addToQueue() {
     if (pendingPhotos.length === 0) return;
-    setCaptureQueue((prev) => [...prev, { id: uid(), photos: pendingPhotos }]);
+    const photoTimestamps = pendingPhotos.map((p) => p.captureTime).filter(Boolean);
+    setCaptureQueue((prev) => [...prev, { id: uid(), photos: pendingPhotos, photoTimestamps }]);
     setPendingPhotos([]);
     setCaptureError(null);
   }
@@ -1228,7 +1179,7 @@ function App() {
     const queueSnapshot = [...captureQueue];
     for (let i = 0; i < queueSnapshot.length; i++) {
       setProcessingIndex(i);
-      await runIdentifyPhotos(queueSnapshot[i].photos);
+      await runIdentifyPhotos(queueSnapshot[i].photos, queueSnapshot[i].photoTimestamps);
     }
     setCaptureQueue([]);
     setProcessingIndex(null);
@@ -1278,10 +1229,6 @@ function App() {
         verified: false
       };
     }));
-    const slug = slugify(matchedEdition ? matchedEdition.name : ai?.proposedEditionName);
-    downloadFullResPhotos(itemId, slug, prepared.map((p) => p.fullRes)).then((filenames) => {
-      persistInventory((prev) => prev.map((it) => it.id === itemId ? { ...it, photoFiles: filenames } : it));
-    });
     setReIdentifyLoading(null);
   }
   function approveAllEditionPriceObservations(editionId) {
@@ -1318,7 +1265,7 @@ function App() {
     setPricingError(null);
     setEntry(item);
     const restored = item.photo ? [item.photo] : [];
-    setEntryPhotos(restored.map((src) => ({ display: src, fullRes: null })));
+    setEntryPhotos(restored.map((src) => ({ display: src })));
     if (!item.editionId && item.aiProposedName) {
       setShowQuickAdd(true);
       let sourceTag = item.aiConfidence === "low" ? "AI-assisted ID (low confidence)" : "AI-assisted ID";
@@ -1340,15 +1287,6 @@ function App() {
   function deleteEntry(id) {
     persistInventory((prev) => prev.filter((it) => it.id !== id));
     setConfirmDeleteId(null);
-  }
-  function copyFilenames(item) {
-    const text = (item.photoFiles || []).join("\n");
-    if (!text || !navigator.clipboard) return;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedId(item.id);
-      setTimeout(() => setCopiedId((c) => c === item.id ? null : c), 1500);
-    }).catch(() => {
-    });
   }
   const counts = {
     total: inventory.length,
@@ -1977,11 +1915,6 @@ function App() {
                   " ",
                   reIdentifyLoading === item.id ? "Identifying\u2026" : "Re-identify",
                   /* @__PURE__ */ jsx("input", { type: "file", accept: "image/*", multiple: true, className: "hidden", disabled: reIdentifyLoading !== null, onChange: (e) => handleReIdentify(e, item.id) })
-                ] }),
-                item.photoFiles?.length > 0 && /* @__PURE__ */ jsxs("button", { onClick: () => copyFilenames(item), className: "fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1", children: [
-                  /* @__PURE__ */ jsx(Copy, { size: 12 }),
-                  " ",
-                  copiedId === item.id ? "Copied" : "Copy filenames"
                 ] }),
                 confirmDeleteId === item.id ? /* @__PURE__ */ jsxs(Fragment, { children: [
                   /* @__PURE__ */ jsx("button", { onClick: () => deleteEntry(item.id), className: "fn-btn-primary rounded px-2 py-1 text-xs", children: "Confirm delete" }),
