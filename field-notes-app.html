@@ -373,12 +373,14 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v44";
+var APP_VERSION = "v45";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v45 2026-07-24  Fast manifest load: lite inventory + background photo fetch with localStorage cache; photo2 for unverified; Re-identify on all !verified
 v44 2026-07-24  Identify: no web search (max_uses:0), 1568px image; 60s abort timeout on all API calls
 v43 2026-07-24  Refresh Pricing scoped to asking/mentioned only; sold prices handled by Cowork; prompt rewritten
+v45 2026-07-24  Fast manifest load: lite inventory + background photo fetch with localStorage cache; photo2 for unverified; Re-identify on all !verified
 v44 2026-07-24  Identify: no web search (max_uses:0), 1568px image; 60s abort timeout on all API calls
 v43 2026-07-24  photoTimestamps stored per item (iCloud Photos matching); download machinery removed; Copy filenames removed
 v42 2026-07-24  Approve all pending in editions tab and intake panel; avg price on collapsed edition card
@@ -413,6 +415,7 @@ var EMPTY_ENTRY = {
   id: null,
   editionId: "",
   photo: null,
+  photo2: null,
   quantity: 1,
   coverCondition: COVER[0],
   cornerWear: CORNER[0],
@@ -725,9 +728,22 @@ async function lookupPricing(name, seasonYear, code, conditionSummary) {
   return callClaudeJSON(buildPricePrompt(name, seasonYear, code, conditionSummary), 4096, 3);
 }
 var SHEETS_URL = "https://script.google.com/macros/s/AKfycbzSFiv90xUYkMfITgL_tGbeeBxptpTahQ0ovEsVUFTU26PjvM2EY55pqKeqF04dhi-H2w/exec";
-async function fetchTab(tab) {
+function getPhotoCache() {
+  try { return JSON.parse(localStorage.getItem("fn_photo_cache") || "{}"); } catch(e) { return {}; }
+}
+function setPhotoCache(cache) {
+  try { localStorage.setItem("fn_photo_cache", JSON.stringify(cache)); } catch(e) {}
+}
+function updatePhotoCache(items) {
+  const cache = getPhotoCache();
+  items.forEach(function(p) { if (p.id) cache[p.id] = { photo: p.photo || null, photo2: p.photo2 || null, ts: p.dateUpdated || "" }; });
+  setPhotoCache(cache);
+}
+async function fetchTab(tab, extraParams) {
   try {
-    const res = await fetch(`${SHEETS_URL}?tab=${tab}`);
+    const p = Object.assign({ tab }, extraParams || {});
+    const qs = Object.keys(p).map(k => encodeURIComponent(k) + "=" + encodeURIComponent(p[k])).join("&");
+    const res = await fetch(SHEETS_URL + "?" + qs);
     if (!res.ok) return tab === "meta" ? {} : [];
     const data = await res.json();
     return tab === "meta" ? data || {} : Array.isArray(data) ? data : [];
@@ -912,14 +928,40 @@ function App() {
     (async () => {
       const [ed, inv, meta] = await Promise.all([
         fetchTab("editions"),
-        fetchTab("inventory"),
+        fetchTab("inventory", { lite: "true" }),
         fetchTab("meta")
       ]);
       setEditions(ed);
-      setInventory(inv);
-      const count = Number(meta?.saveCount);
+      const cache = getPhotoCache();
+      const invWithPhotos = inv.map(function(item) {
+        const c = cache[item.id];
+        if (c && c.ts === item.dateUpdated) return Object.assign({}, item, { photo: c.photo, photo2: c.photo2 });
+        return item;
+      });
+      setInventory(invWithPhotos);
+      const count = Number(meta && meta.saveCount);
       setSaveCount(Number.isFinite(count) ? count : 0);
       setLoaded(true);
+      const needsPhoto = inv.filter(function(item) {
+        const c = cache[item.id];
+        return !c || c.ts !== item.dateUpdated;
+      });
+      if (needsPhoto.length > 0) {
+        fetchTab("photos").then(function(photoData) {
+          if (!Array.isArray(photoData) || !photoData.length) return;
+          const needed = new Set(needsPhoto.map(function(n) { return n.id; }));
+          const relevant = photoData.filter(function(p) { return needed.has(p.id); });
+          if (!relevant.length) return;
+          setInventory(function(prev) {
+            return prev.map(function(item) {
+              const pd = relevant.find(function(p) { return p.id === item.id; });
+              if (!pd) return item;
+              return Object.assign({}, item, { photo: pd.photo, photo2: pd.photo2 });
+            });
+          });
+          updatePhotoCache(relevant);
+        }).catch(function() {});
+      }
     })();
   }, []);
   const persistEditions = useCallback((updater) => {
@@ -1111,6 +1153,7 @@ function App() {
       id,
       verified: true,
       photo: entryPhotos[0]?.display || null,
+      photo2: null,
       photoFiles: entry.photoFiles || [],
       priceObservations: isNew ? (entry.priceObservations || []) : (inventory.find((it) => it.id === id)?.priceObservations || entry.priceObservations || [])
     };
@@ -1151,6 +1194,7 @@ function App() {
       ...EMPTY_ENTRY,
       id: newEntryId,
       photo: photos[0].thumb,
+      photo2: photos.length > 1 ? photos[1].display : null,
       photoFiles: [],
       photoTimestamps: photoTimestamps || photos.map((p) => p.captureTime).filter(Boolean),
       editionId: matchedEdition ? matchedEdition.id : "",
@@ -1926,7 +1970,7 @@ function App() {
                   " ",
                   item.verified ? "Edit" : "Review"
                 ] }),
-                item.aiError && /* @__PURE__ */ jsxs("label", { className: `fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1 ${reIdentifyLoading === item.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`, children: [
+                !item.verified && /* @__PURE__ */ jsxs("label", { className: `fn-btn-ghost rounded px-2 py-1 text-xs flex items-center gap-1 ${reIdentifyLoading === item.id ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`, children: [
                   /* @__PURE__ */ jsx(RefreshCw, { size: 12 }),
                   " ",
                   reIdentifyLoading === item.id ? "Identifying\u2026" : "Re-identify",
