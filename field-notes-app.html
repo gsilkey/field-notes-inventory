@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v47";
+var APP_VERSION = "v48";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v48 2026-10-22  Price import: write one edition at a time (concurrent Apps Script writes were dropped), auto re-send editions missing from the sheet, corrected retry message
 v47 2026-10-22  Price import: optional "create missing editions" from the archive catalog (FNC number, name, season/year)
 v46 2026-10-22  Import price research CSV (Editions tab): FNC/name matching, dry-run preview, pending-review observations, dedupe on re-import, sheet verify
 v45 2026-07-24  Fast manifest load: lite inventory + background photo fetch with localStorage cache; photo2 for unverified; Re-identify on all !verified
@@ -1521,32 +1522,50 @@ function App() {
     setImportMsg("Importing\u2026");
     const ids = Object.keys(plan.byEdition);
     const expectedKeys = new Set(Object.values(plan.byEdition).flat().map((o) => o.importKey));
-    for (let i = 0; i < ids.length; i += 4) {
-      const chunk = ids.slice(i, i + 4);
-      persistEditions((prev) => applyImportChunk(prev, chunk, plan));
-      setImportMsg("Importing\u2026 " + Math.min(i + 4, ids.length) + " of " + ids.length + " editions");
-      await new Promise((r) => setTimeout(r, 1500));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    let cur = applyImportChunk(editions, ids, plan);
+    const byId = Object.fromEntries(cur.map((e) => [e.id, e]));
+    async function writeOne(id) {
+      const ed = byId[id];
+      if (!ed) return;
+      await upsertRow("editions", ed);
+      setEditions((prev) => applyImportChunk(prev, [id], plan));
+      await sleep(400);
     }
-    await new Promise((r) => setTimeout(r, 2500));
-    let verified = null;
-    try {
+    for (let i = 0; i < ids.length; i++) {
+      setImportMsg("Importing\u2026 " + (i + 1) + " of " + ids.length + " editions (one at a time)");
+      await writeOne(ids[i]);
+    }
+    async function checkSheet() {
       const remote = await fetchTab("editions");
+      if (!Array.isArray(remote) || remote.length === 0) return null;
       let found = 0;
+      const missingIds = new Set(ids);
       remote.forEach((ed) => {
         let obs = ed.priceObservations;
         if (typeof obs === "string") { try { obs = JSON.parse(obs || "[]"); } catch (e) { obs = []; } }
+        const keys = new Set((obs || []).map((o) => o && o.importKey).filter(Boolean));
         (obs || []).forEach((o) => { if (o && expectedKeys.has(o.importKey)) found++; });
+        if (missingIds.has(ed.id) && (plan.byEdition[ed.id] || []).every((o) => keys.has(o.importKey))) missingIds.delete(ed.id);
       });
-      verified = found;
-    } catch (e) {
-      verified = null;
+      return { found, missingIds: [...missingIds] };
     }
     const total = expectedKeys.size;
-    setImportMsg(verified === null
+    let result = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await sleep(2500);
+      try { result = await checkSheet(); } catch (e) { result = null; }
+      if (!result || result.missingIds.length === 0) break;
+      for (let j = 0; j < result.missingIds.length; j++) {
+        setImportMsg("Re-sending " + (j + 1) + " of " + result.missingIds.length + " editions the sheet didn't receive");
+        await writeOne(result.missingIds[j]);
+      }
+    }
+    setImportMsg(result === null
       ? "Imported " + total + " rows into the app. Couldn't re-read the sheet to verify \u2014 reload and check the Editions tab."
-      : verified >= total
-        ? "Imported " + total + " rows. Verified in the sheet: " + verified + " of " + total + "."
-        : "Imported " + total + " rows, but only " + verified + " found in the sheet so far. Wait a few seconds and re-import the same file: duplicates are skipped and missing rows are added.");
+      : result.found >= total
+        ? "Imported " + total + " rows. Verified in the sheet: " + result.found + " of " + total + "."
+        : "Imported " + total + " rows, but only " + result.found + " are in the sheet. Reload the app, then import the same file again: rows already in the sheet are skipped and the missing ones are added.");
     setImportPlan(null);
     setImportBusy(false);
   }
