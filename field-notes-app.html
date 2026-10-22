@@ -373,10 +373,11 @@ var TABS = [
   { key: "inventory", label: "Inventory" },
   { key: "editions", label: "Editions" }
 ];
-var APP_VERSION = "v45";
+var APP_VERSION = "v46";
 var BUILD_DATE = "2026-07-09";
 /*
 CHANGELOG
+v46 2026-10-22  Import price research CSV (Editions tab): FNC/name matching, dry-run preview, pending-review observations, dedupe on re-import, sheet verify
 v45 2026-07-24  Fast manifest load: lite inventory + background photo fetch with localStorage cache; photo2 for unverified; Re-identify on all !verified
 v44 2026-07-24  Identify: no web search (max_uses:0), 1568px image; 60s abort timeout on all API calls
 v43 2026-07-24  Refresh Pricing scoped to asking/mentioned only; sold prices handled by Cowork; prompt rewritten
@@ -467,6 +468,168 @@ function priceStats(observations, completeness, coverCondition) {
     estimated
   };
 }
+/* ---- Price research CSV import (v46) ---- */
+function parseCSV(text) {
+  const rows = [];
+  let row = [], f = "", q = false;
+  text = String(text || "").replace(/^﻿/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(f); f = "";
+      if (row.length > 1 || row[0] !== "") rows.push(row);
+      row = [];
+    } else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+function importNormName(s) {
+  return String(s || "").toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+}
+function importFncNum(s) {
+  const t = String(s || "").trim();
+  const m = t.match(/FNC[-\s]?0*(\d+)/i) || t.match(/^0*(\d+)$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+function importCondition(c) {
+  const s = String(c || "").toLowerCase().trim();
+  if (!s || s === "not stated") return "Sealed";
+  if (/unsealed|open|none sealed|mixed|pre-owned|single|not sealed/.test(s)) return null;
+  if (/sealed|brand new|^new/.test(s)) return "Sealed";
+  return null;
+}
+function importRowKey(r, ord) {
+  return [r.fnc, r.source, r.status, r.date_posted, r.price_usd, r.unit].join("|") + "#" + ord;
+}
+function buildImportPlan(csvText, editions) {
+  const rows = parseCSV(csvText);
+  if (rows.length < 2) return { error: "CSV is empty." };
+  const head = rows[0].map((h) => h.trim());
+  const need = ["fnc", "edition", "status", "price_usd", "unit", "condition", "date_posted", "source", "notes", "price_per_pack_usd"];
+  const miss = need.filter((h) => !head.includes(h));
+  if (miss.length) return { error: "Missing column(s): " + miss.join(", ") };
+  const byNum = new Map(), byName = new Map();
+  (editions || []).forEach((ed) => {
+    const n = importFncNum(ed.editionNumber);
+    if (n !== null) { if (!byNum.has(n)) byNum.set(n, []); byNum.get(n).push(ed); }
+    const k = importNormName(ed.name);
+    if (k) { if (!byName.has(k)) byName.set(k, []); byName.get(k).push(ed); }
+  });
+  const skipped = { notEdition: 0, noPerPack: 0, notSealed: 0, badPrice: 0 };
+  const unmatched = {};
+  const keyCounts = {};
+  const byEdition = {};
+  const matchedEditions = {};
+  const warnings = [];
+  let total = 0, eligible = 0, dup = 0, tooLarge = 0;
+  const nowIso = new Date().toISOString();
+  rows.slice(1).forEach((cells) => {
+    const r = {};
+    head.forEach((h, i) => { r[h] = (cells[i] ?? "").trim(); });
+    total++;
+    const num = importFncNum(r.fnc);
+    if (num === null) { skipped.notEdition++; return; }
+    const pp = parseFloat(r.price_per_pack_usd);
+    if (isNaN(pp)) { skipped.noPerPack++; return; }
+    if (pp <= 0) { skipped.badPrice++; return; }
+    if (!importCondition(r.condition)) { skipped.notSealed++; return; }
+    eligible++;
+    let ed = null, how = "";
+    const nm = importNormName(r.edition);
+    const numHits = byNum.get(num) || [];
+    const nameHits = byName.get(nm) || [];
+    if (numHits.length === 1) {
+      const cand = numHits[0];
+      const cn = importNormName(cand.name);
+      if (!cn || !nm || cn.includes(nm) || nm.includes(cn)) { ed = cand; how = "FNC number"; }
+      else if (nameHits.length === 1) { ed = nameHits[0]; how = "name (number conflicts)"; }
+      else {
+        const k = "conflict|" + r.fnc;
+        unmatched[k] = unmatched[k] || { fnc: r.fnc, name: r.edition, count: 0, reason: 'number matches "' + cand.name + '" but name differs' };
+        unmatched[k].count++;
+        return;
+      }
+    } else if (numHits.length > 1) {
+      const k = "amb|" + r.fnc;
+      unmatched[k] = unmatched[k] || { fnc: r.fnc, name: r.edition, count: 0, reason: "several editions share this FNC number" };
+      unmatched[k].count++;
+      return;
+    } else if (nameHits.length === 1) { ed = nameHits[0]; how = "name"; }
+    else if (nameHits.length > 1) {
+      const k = "ambn|" + r.fnc;
+      unmatched[k] = unmatched[k] || { fnc: r.fnc, name: r.edition, count: 0, reason: "several editions share this name" };
+      unmatched[k].count++;
+      return;
+    } else {
+      const k = "none|" + r.fnc;
+      unmatched[k] = unmatched[k] || { fnc: r.fnc, name: r.edition, count: 0, reason: "not in your Editions table" };
+      unmatched[k].count++;
+      return;
+    }
+    const kk = r.fnc + "|" + r.source + "|" + r.status + "|" + r.date_posted + "|" + r.price_usd + "|" + r.unit;
+    keyCounts[kk] = (keyCounts[kk] || 0) + 1;
+    const importKey = importRowKey(r, keyCounts[kk]);
+    const existing = ed.priceObservations || [];
+    if (existing.some((o) => o.importKey === importKey)) { dup++; return; }
+    const isEbay = r.source.toLowerCase() === "ebay";
+    const sold = r.status === "sold" && isEbay;
+    const dm = r.date_posted.match(/^(\d{4}-\d{2}-\d{2})/);
+    const noteParts = [];
+    const listed = parseFloat(r.price_usd);
+    if (!isNaN(listed) && Math.abs(listed - pp) > 0.005) noteParts.push("listed $" + listed + " for " + (r.unit || "unit"));
+    if (!isEbay && r.status === "sold") noteParts.push("marked sold on Facebook; listed price, not confirmed sale");
+    if (r.condition && r.condition.toLowerCase() === "not stated") noteParts.push("condition not stated, assumed sealed");
+    if (!dm && r.date_posted) noteParts.push("date: " + r.date_posted);
+    if (r.notes) noteParts.push(r.notes);
+    const obs = {
+      id: uid(),
+      price: Math.round(pp * 100) / 100,
+      type: sold ? "sold" : "asking",
+      source: isEbay ? "eBay" : "Facebook – Field Nuts",
+      sourceUrl: null,
+      date: dm ? dm[1] : null,
+      note: noteParts.join("; ").slice(0, 400),
+      compCondition: "Sealed",
+      addedBy: "cowork",
+      pendingReview: true,
+      importKey,
+      dateAdded: nowIso
+    };
+    (byEdition[ed.id] = byEdition[ed.id] || []).push(obs);
+    matchedEditions[ed.id] = matchedEditions[ed.id] || { name: ed.name, fnc: r.fnc, how, count: 0 };
+    matchedEditions[ed.id].count++;
+  });
+  Object.keys(byEdition).forEach((id) => {
+    const ed = editions.find((e) => e.id === id);
+    const size = JSON.stringify([...(ed.priceObservations || []), ...byEdition[id]]).length;
+    if (size > 45000) {
+      tooLarge += byEdition[id].length;
+      warnings.push((ed.name || id) + ": would exceed the sheet cell limit, skipped");
+      delete byEdition[id];
+      delete matchedEditions[id];
+    }
+  });
+  const newCount = Object.values(byEdition).reduce((a, l) => a + l.length, 0);
+  return {
+    total, eligible, skipped, duplicates: dup, tooLarge, newCount,
+    byEdition, matchedEditions,
+    unmatched: Object.values(unmatched).sort((a, b) => b.count - a.count),
+    warnings
+  };
+}
+function mergeImportedObservations(ed, newObs) {
+  const have = new Set((ed.priceObservations || []).map((o) => o.importKey).filter(Boolean));
+  const add = (newObs || []).filter((o) => !have.has(o.importKey));
+  return add.length ? { ...ed, priceObservations: [...(ed.priceObservations || []), ...add] } : ed;
+}
+/* ---- end price research CSV import ---- */
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -923,6 +1086,10 @@ function App() {
   const [pendingRestore, setPendingRestore] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [restoreNotice, setRestoreNotice] = useState(null);
+  const [importPlan, setImportPlan] = useState(null);
+  const [importError, setImportError] = useState(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
   const AUTO_BACKUP_EVERY = 25;
   useEffect(() => {
     (async () => {
@@ -1290,6 +1457,58 @@ function App() {
       };
     }));
     setReIdentifyLoading(null);
+  }
+  async function handleImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    setImportPlan(null);
+    setImportError(null);
+    setImportMsg(null);
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const plan = buildImportPlan(text, editions);
+      if (plan.error) setImportError(plan.error);
+      else setImportPlan(plan);
+    } catch (e) {
+      setImportError("Couldn't read that file: " + (e && e.message ? e.message : e));
+    }
+  }
+  async function runImport() {
+    if (!importPlan || importBusy) return;
+    const plan = importPlan;
+    setImportBusy(true);
+    setImportMsg("Importing\u2026");
+    const ids = Object.keys(plan.byEdition);
+    const expectedKeys = new Set(Object.values(plan.byEdition).flat().map((o) => o.importKey));
+    for (let i = 0; i < ids.length; i += 4) {
+      const chunk = ids.slice(i, i + 4);
+      persistEditions((prev) => prev.map((ed) => chunk.includes(ed.id) ? mergeImportedObservations(ed, plan.byEdition[ed.id]) : ed));
+      setImportMsg("Importing\u2026 " + Math.min(i + 4, ids.length) + " of " + ids.length + " editions");
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    await new Promise((r) => setTimeout(r, 2500));
+    let verified = null;
+    try {
+      const remote = await fetchTab("editions");
+      let found = 0;
+      remote.forEach((ed) => {
+        let obs = ed.priceObservations;
+        if (typeof obs === "string") { try { obs = JSON.parse(obs || "[]"); } catch (e) { obs = []; } }
+        (obs || []).forEach((o) => { if (o && expectedKeys.has(o.importKey)) found++; });
+      });
+      verified = found;
+    } catch (e) {
+      verified = null;
+    }
+    const total = expectedKeys.size;
+    setImportMsg(verified === null
+      ? "Imported " + total + " rows into the app. Couldn't re-read the sheet to verify \u2014 reload and check the Editions tab."
+      : verified >= total
+        ? "Imported " + total + " rows. Verified in the sheet: " + verified + " of " + total + "."
+        : "Imported " + total + " rows, but only " + verified + " found in the sheet so far. Wait a few seconds and re-import the same file: duplicates are skipped and missing rows are added.");
+    setImportPlan(null);
+    setImportBusy(false);
   }
   function approveAllEditionPriceObservations(editionId) {
     persistEditions((prev) => prev.map((ed) =>
@@ -2000,6 +2219,27 @@ function App() {
               className: "fn-input rounded pl-7 pr-2 py-1.5 text-sm w-full"
             }
           )
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "fn-card rounded p-3 flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsx("div", { className: "text-xs uppercase tracking-wide text-stone-500", children: "Import price research (CSV)" }),
+          /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-400", children: "Use price_observations.csv from the pricing research. Rows match editions by FNC number, then name, and land as pending review. Re-importing skips rows already imported." }),
+          /* @__PURE__ */ jsx("input", { type: "file", accept: ".csv,text/csv", onChange: handleImportFile, disabled: importBusy, className: "text-xs" }),
+          importError && /* @__PURE__ */ jsx("div", { className: "text-xs text-red-600", children: importError }),
+          importMsg && /* @__PURE__ */ jsx("div", { className: "text-xs text-stone-700", children: importMsg }),
+          importPlan && /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-1 text-xs text-stone-600", children: [
+            /* @__PURE__ */ jsxs("div", { className: "font-semibold", children: [importPlan.newCount, " new rows across ", Object.keys(importPlan.byEdition).length, " editions (pending review)"] }),
+            /* @__PURE__ */ jsxs("div", { children: [importPlan.total, " rows read \u00b7 ", importPlan.eligible, " usable \u00b7 ", importPlan.duplicates, " already imported"] }),
+            /* @__PURE__ */ jsxs("div", { children: ["Skipped: ", importPlan.skipped.noPerPack, " no per-pack price (singles, lots) \u00b7 ", importPlan.skipped.notSealed, " not sealed \u00b7 ", importPlan.skipped.notEdition, " not an edition row", importPlan.tooLarge ? " \u00b7 " + importPlan.tooLarge + " over size limit" : ""] }),
+            importPlan.warnings.map((w, i) => /* @__PURE__ */ jsx("div", { className: "text-red-600", children: w }, i)),
+            importPlan.unmatched.length > 0 && /* @__PURE__ */ jsxs("div", { className: "mt-1", children: [
+              /* @__PURE__ */ jsxs("div", { className: "font-semibold", children: ["Not imported \u2014 no safe match (", importPlan.unmatched.reduce((a, u) => a + u.count, 0), " rows)"] }),
+              importPlan.unmatched.map((u, i) => /* @__PURE__ */ jsxs("div", { children: [u.fnc, " ", u.name, " \u00b7 ", u.count, " \u00b7 ", u.reason] }, i))
+            ] }),
+            /* @__PURE__ */ jsxs("div", { className: "flex gap-2 mt-1", children: [
+              /* @__PURE__ */ jsxs("button", { onClick: runImport, disabled: importBusy || importPlan.newCount === 0, className: "fn-btn-primary rounded px-3 py-1.5 text-xs disabled:opacity-40", children: ["Import ", importPlan.newCount, " rows"] }),
+              /* @__PURE__ */ jsx("button", { onClick: () => setImportPlan(null), disabled: importBusy, className: "fn-btn-ghost rounded px-3 py-1.5 text-xs", children: "Cancel" })
+            ] })
+          ] })
         ] }),
         /* @__PURE__ */ jsx(
           EditionForm,
